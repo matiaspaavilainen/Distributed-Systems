@@ -1,0 +1,14 @@
+syntax = "proto3";
+package SAND;
+
+service RequestService {
+    rpc RequestData (Request) returns (RequestReply) {}
+}
+
+message Request {
+    string name = 1;
+}
+
+message RequestReply {
+    string data = 1;
+}
