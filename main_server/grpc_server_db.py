@@ -13,6 +13,7 @@
 # limitations under the License.
 """Common resources used in the gRPC route guide example."""
 from pymongo import MongoClient
+
 client = MongoClient()
 db = client.SAND
 collection = db["test_collection"]
@@ -20,7 +21,10 @@ collection = db["test_collection"]
 import json
 
 import data_pb2
+
 DEBUG = False
+
+
 def read_database():
     """Reads the route guide database.
 
@@ -34,16 +38,16 @@ def read_database():
         for item in json.load(db_file):
             items[item["name"]] = item["email"]
 
-
     if DEBUG:
         print(items)
     return items
+
 
 def mongo_read_database():
     items = {}
 
     for item in collection.find():
-        
+
         items[item["name"]] = item["email"]
     if DEBUG:
         print(items)
