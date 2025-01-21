@@ -20,8 +20,7 @@ collection = db["test_collection"]
 import json
 
 import data_pb2
-
-
+DEBUG = False
 def read_database():
     """Reads the route guide database.
 
@@ -36,7 +35,8 @@ def read_database():
             items[item["name"]] = item["email"]
 
 
-    print(items)
+    if DEBUG:
+        print(items)
     return items
 
 def mongo_read_database():
@@ -45,5 +45,6 @@ def mongo_read_database():
     for item in collection.find():
         
         items[item["name"]] = item["email"]
-    print(items)
+    if DEBUG:
+        print(items)
     return items

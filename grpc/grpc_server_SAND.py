@@ -8,7 +8,7 @@ import data_pb2
 import data_pb2_grpc
 import grpc_server_db
 
-DEBUG = True
+DEBUG = False
 
 
 def get_data(db, name):
