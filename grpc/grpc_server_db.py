@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Common resources used in the gRPC route guide example."""
+from pymongo import MongoClient
+client = MongoClient()
+db = client.SAND
+collection = db["test_collection"]
 
 import json
 
@@ -32,5 +36,14 @@ def read_database():
             items[item["name"]] = item["email"]
 
 
+    print(items)
+    return items
+
+def mongo_read_database():
+    items = {}
+
+    for item in collection.find():
+        
+        items[item["name"]] = item["email"]
     print(items)
     return items

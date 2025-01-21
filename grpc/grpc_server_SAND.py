@@ -25,7 +25,7 @@ def get_data(db, name):
 class RequestServicer(data_pb2_grpc.RequestServiceServicer):
     def __init__(self):
 
-        self.db = grpc_server_db.read_database()
+        self.db = grpc_server_db.mongo_read_database()
 
     def RequestData(self, request, context):
         feature = get_data(self.db, request)
