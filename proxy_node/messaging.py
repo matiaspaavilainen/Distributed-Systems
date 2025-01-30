@@ -12,6 +12,7 @@ from kafka_messaging.consumer import consumer_pb2_grpc
 from kafka_messaging.producer import producer_pb2
 from kafka_messaging.producer import producer_pb2_grpc
 
+# New microservice that has a db to keep the tabel in
 lookup_table = {}
 
 
@@ -56,13 +57,13 @@ def update_lookup_table(data):
         print(f"Data is not in the expected format: {e}")
 
 
+def get_lookup_table():
+    return lookup_table
+
+
 def send_message(topic, data):
     with grpc.insecure_channel("localhost:50051") as channel:
         stub = producer_pb2_grpc.ProducerStub(channel)
         request = producer_pb2.SendMessageRequest(topic=topic, data=json.dumps(data))
         response = stub.SendMessage(request)
         print(f"Send message status: {response.status}")
-
-
-def get_lookup_table():
-    return lookup_table

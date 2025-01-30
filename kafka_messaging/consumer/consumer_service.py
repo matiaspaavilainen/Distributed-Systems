@@ -53,5 +53,5 @@ def serve(topic):
 
 
 if __name__ == "__main__":
-    topic = "lookup_table"  # Replace with your desired topic
+    topic = "lookup_table"
     serve(topic)
