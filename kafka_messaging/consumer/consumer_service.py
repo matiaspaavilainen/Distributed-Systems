@@ -1,6 +1,7 @@
-from concurrent import futures
-import grpc
+import sys
 import json
+import grpc
+from concurrent import futures
 from kafka import KafkaConsumer
 import consumer_pb2
 import consumer_pb2_grpc
@@ -43,15 +44,19 @@ class ConsumerService(consumer_pb2_grpc.ConsumerServicer):
             )
 
 
-def serve(topic):
+def serve(topic, port):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     consumer_pb2_grpc.add_ConsumerServicer_to_server(ConsumerService(topic), server)
-    server.add_insecure_port("[::]:50052")
+    server.add_insecure_port(f"[::]:{port}")
     server.start()
-    print("Started service")
+    print(f"Started service on topic: {topic} on port: {port}")
     server.wait_for_termination()
 
 
 if __name__ == "__main__":
-    topic = "lookup_table"
-    serve(topic)
+    if len(sys.argv) != 3:
+        print("Usage: python consumer_service.py <topic> <port>")
+        sys.exit(1)
+    topic = sys.argv[1]
+    port = int(sys.argv[2])
+    serve(topic, port)

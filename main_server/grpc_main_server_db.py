@@ -16,11 +16,9 @@ from pymongo import MongoClient
 
 client = MongoClient()
 db = client.SAND
-collection = db["test_collection"]
+collection = db["users"]
 
 import json
-
-import data_pb2
 
 DEBUG = False
 

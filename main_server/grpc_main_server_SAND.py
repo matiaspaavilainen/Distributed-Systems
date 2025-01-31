@@ -1,12 +1,10 @@
 from concurrent import futures
 import logging
-import math
-import time
 
 import grpc
 import data_pb2
 import data_pb2_grpc
-import grpc_server_db
+import grpc_main_server_db
 
 DEBUG = False
 
@@ -26,7 +24,7 @@ def get_data(db, name):
 class RequestServicer(data_pb2_grpc.RequestServiceServicer):
     def __init__(self):
 
-        self.db = grpc_server_db.mongo_read_database()
+        self.db = grpc_main_server_db.mongo_read_database()
 
     def RequestData(self, request, context):
         feature = get_data(self.db, request)
