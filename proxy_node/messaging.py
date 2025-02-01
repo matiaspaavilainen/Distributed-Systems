@@ -8,14 +8,13 @@ import threading
 sys.path.append(os.path.join(os.path.dirname(__file__), "../kafka_messaging/consumer"))
 sys.path.append(os.path.join(os.path.dirname(__file__), "../kafka_messaging/producer"))
 
-from kafka_messaging.consumer import consumer_pb2
-from kafka_messaging.consumer import consumer_pb2_grpc
-from kafka_messaging.producer import producer_pb2
-from kafka_messaging.producer import producer_pb2_grpc
+from kafka_messaging.consumer import consumer_pb2, consumer_pb2_grpc
+from kafka_messaging.producer import producer_pb2, producer_pb2_grpc
 
-# New microservice that has a db to keep the table in
 lookup_table = {}
 lookup_table_lock = threading.Lock()
+
+DEBUG = True
 
 
 def init_lookup_table(port):
@@ -23,7 +22,8 @@ def init_lookup_table(port):
         with grpc.insecure_channel(f"localhost:{port}") as channel:
             stub = consumer_pb2_grpc.ConsumerStub(channel)
             response = stub.GetLatestMessage(consumer_pb2.GetLatestMessageRequest())
-            update_lookup_table(response.data, True, 0)
+            # Default to add type "A" here so it updates locally
+            update_lookup_table(response.data, "A", True, 0)
     except grpc.RpcError as e:
         print(f"Failed to connect to gRPC server: {e}")
 
@@ -35,7 +35,16 @@ def listen_for_new_messages(port):
             for response in stub.ListenForNewMessages(
                 consumer_pb2.ListenForNewMessagesRequest()
             ):
-                update_lookup_table(response.data, True, 0)
+                # Extract message type if present
+                # Otherwise default to "A"
+                try:
+                    message = json.loads(response.data)
+                    data = message["data"]
+                    message_type = message.get("type", "A")
+                    update_lookup_table(data, message_type, True, 0)
+                except (KeyError, json.JSONDecodeError):
+                    # Fall back to old behavior if the message isn't properly formatted
+                    print("error: ", KeyError, json.JSONDecodeError)
     except grpc.RpcError as e:
         if e.code() == grpc.StatusCode.UNAVAILABLE:
             print("gRPC server unavailable, shutting down listener.")
@@ -43,28 +52,37 @@ def listen_for_new_messages(port):
             print(f"gRPC error: {e}")
 
 
-def update_lookup_table(data, received_from_message, kafka_producer_port):
+def update_lookup_table(data, message_type, received_from_message, kafka_producer_port):
     global lookup_table
     try:
-        # Parse the data if it's a JSON string
+        # If data is a JSON string, parse it
         if isinstance(data, str):
             data = json.loads(data)
 
-        # Update the lookup table with the received data
         with lookup_table_lock:
-            for port, values in data.items():
-                port = int(port)  # Ensure port is an integer
-                if port not in lookup_table:
-                    lookup_table[port] = values
-                else:
-                    for value in values:
-                        if value not in lookup_table[port]:
-                            lookup_table[port].append(value)
+            if message_type == "A":
+                # Add or update
+                for port, values in data.items():
+                    port = int(port)
+                    if port not in lookup_table:
+                        lookup_table[port] = values
+                    else:
+                        for value in values:
+                            if value not in lookup_table[port]:
+                                lookup_table[port].append(value)
+            elif message_type == "D":
+                # Delete the entire entry for the given port(s)
+                for port in data:
+                    port = int(port)
+                    if port in lookup_table:
+                        del lookup_table[port]
 
-        # Send the entire lookup table if the update was not received from a message
+        # Send only the updated value if the update was not received from a message
         if not received_from_message:
-            send_message("lookup_table", lookup_table, kafka_producer_port)
-            print("Updated lookup table:", lookup_table)
+            message_payload = {"data": data, "type": message_type}
+            send_message("node-updates", message_payload, kafka_producer_port)
+            if DEBUG:
+                print("Message sent:", message_payload)
     except json.JSONDecodeError as e:
         print(f"Failed to decode JSON data: {e}")
     except AttributeError as e:
@@ -84,6 +102,18 @@ def send_message(topic, data, kafka_producer_port):
                 topic=topic, data=json.dumps(data)
             )
             response = stub.SendMessage(request)
-            print(f"Sent message status: {response.status}")
+            if DEBUG:
+                print(f"Sent message status: {response.status}")
     except grpc.RpcError as e:
         print(f"Failed to send message: {e}")
+
+
+def send_deletion_message(port, kafka_producer_port):
+    try:
+        data = [port]
+        message_payload = {"data": data, "type": "D"}
+        send_message("node-updates", message_payload, kafka_producer_port)
+        if DEBUG:
+            print(f"Sent deletion message for port {port}")
+    except Exception as e:
+        print(f"Failed to send deletion message: {e}")
