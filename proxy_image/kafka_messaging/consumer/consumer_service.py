@@ -11,7 +11,7 @@ class ConsumerService(consumer_pb2_grpc.ConsumerServicer):
     def __init__(self, topic):
         self.consumer = KafkaConsumer(
             topic,
-            bootstrap_servers=["localhost:9092"],
+            bootstrap_servers=["broker:9092"],
             value_deserializer=lambda v: json.loads(v.decode("utf-8")),
             auto_offset_reset="latest",
             enable_auto_commit=False,

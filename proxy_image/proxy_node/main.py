@@ -24,7 +24,7 @@ import grpc_server_SAND
 
 DEBUG = True
 
-MAIN_SERVER_PORT = 50053  # Static port for the main server
+MAIN_SERVER_PORT = 40002  # Static port for the main server
 
 stop_event = threading.Event()
 
@@ -131,6 +131,7 @@ def main(port):
     # to avoid performance issues when the table grows
     # this consumer is removed after the initialization
     KAFKA_INIT_PORT = port + 4
+    
 
     LOOKUP_UPDATES_TOPIC = "lookup-updates"
     LOOKUP_TABLE_TOPIC = "lookup-table"

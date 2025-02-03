@@ -19,7 +19,7 @@ DEBUG = True
 
 def init_lookup_table(port):
     try:
-        with grpc.insecure_channel(f"localhost:{port}") as channel:
+        with grpc.insecure_channel(f"main_server:{port}") as channel:
             stub = consumer_pb2_grpc.ConsumerStub(channel)
             response = stub.GetLatestMessage(consumer_pb2.GetLatestMessageRequest())
             # Default to add type "A" here so it updates locally
@@ -30,7 +30,7 @@ def init_lookup_table(port):
 
 def listen_for_new_messages(port):
     try:
-        with grpc.insecure_channel(f"localhost:{port}") as channel:
+        with grpc.insecure_channel(f"main_server:{port}") as channel:
             stub = consumer_pb2_grpc.ConsumerStub(channel)
             for response in stub.ListenForNewMessages(
                 consumer_pb2.ListenForNewMessagesRequest()
@@ -96,7 +96,7 @@ def get_lookup_table():
 
 def send_message(topic, data, kafka_producer_port):
     try:
-        with grpc.insecure_channel(f"localhost:{kafka_producer_port}") as channel:
+        with grpc.insecure_channel(f"main_server:{kafka_producer_port}") as channel:
             stub = producer_pb2_grpc.ProducerStub(channel)
             request = producer_pb2.SendMessageRequest(
                 topic=topic, data=json.dumps(data)

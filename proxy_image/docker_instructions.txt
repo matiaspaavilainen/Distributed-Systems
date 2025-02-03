@@ -1,0 +1,3 @@
+docker run -d  --name mongo --network SAND --network-alias mongo mongo
+docker run -d  --name main_server --network SAND --network-alias main_server main_server 
+docker run -d  --name proxy_node --network SAND --network-alias proxy_node1 proxy_node
