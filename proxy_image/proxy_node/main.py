@@ -101,7 +101,7 @@ def find_item_from_any_db(query):
 
 
 def start_http_server(port):
-    uvicorn.run(app, host="localhost", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 def start_kafka_consumer_service(port):
@@ -169,12 +169,12 @@ def main(port):
     KAFKA_PROD_PORT = port + 3
 
     # Dynamically name the database based on the port
-    client = MongoClient()
+    client = MongoClient(
+        "mongo", 27017, username="root", password="example", authSource="admin"
+    )
     db_name = f"SAND{port}"
     db = client[db_name]
     collection = db["users"]
-    # Empty the db when started if old still exists
-    collection.drop()
 
     # Start the Kafka consumer service
     kafka_consumer_process = start_kafka_consumer_service(KAFKA_CON_PORT)

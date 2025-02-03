@@ -44,5 +44,5 @@ USER appuser
 # Copy the source code into the container.
 COPY . .
 
-# Run python with PORT from environment
-CMD python proxy_node/main.py ${PORT}
+# Run the application.
+CMD ["python", "lookup_table_service/main.py"]

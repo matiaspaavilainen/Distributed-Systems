@@ -7,13 +7,17 @@ service Consumer {
     rpc ListenForNewMessages (ListenForNewMessagesRequest) returns (stream ListenForNewMessagesResponse);
 }
 
-message GetLatestMessageRequest {}
+message GetLatestMessageRequest {
+    string topic = 1;
+}
 
 message GetLatestMessageResponse {
     string data = 1;
 }
 
-message ListenForNewMessagesRequest {}
+message ListenForNewMessagesRequest {
+    string topic = 1;
+}
 
 message ListenForNewMessagesResponse {
     string data = 1;

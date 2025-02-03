@@ -13,10 +13,11 @@
 # limitations under the License.
 """Common resources used in the gRPC route guide example."""
 from pymongo import MongoClient
-import urllib.parse
 
-#This needs to connect to the database container, needs not to be hardcoded
-client = client = MongoClient("mongo", 27017, username='root', password='example', authSource='admin')
+# This needs to connect to the database container, needs not to be hardcoded
+client = client = MongoClient(
+    "mongo", 27017, username="root", password="example", authSource="admin"
+)
 db = client.SAND
 collection = db["users"]
 

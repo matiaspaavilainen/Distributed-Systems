@@ -58,7 +58,7 @@ def serve(port):
     consumer_pb2_grpc.add_ConsumerServicer_to_server(ConsumerService(), server)
     server.add_insecure_port(f"[::]:{port}")
     server.start()
-    print(f"Started consumer service on port: {port}")
+    print(f"Started service on port: {port}")
     server.wait_for_termination()
 
 

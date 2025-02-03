@@ -8,7 +8,6 @@
 # database or a cache. For examples, see the Awesome Compose repository:
 # https://github.com/docker/awesome-compose
 
-
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to
 # start the database before your application. The `db-data` volume persists the
@@ -41,67 +40,108 @@
 # secrets:
 #   db-password:
 #     file: db/password.txt
-version: '3.1'
+version: "3.1"
 
 services:
+    mongo:
+        image: mongo
+        restart: always
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: root
+            MONGO_INITDB_ROOT_PASSWORD: example
+        networks:
+            - SAND
+        volumes:
+            - ./mongo-init:/docker-entrypoint-initdb.d
 
-  mongo:
-    image: mongo
-    restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
-    networks:
-      - SAND
+    mongo-express:
+        image: mongo-express
+        restart: always
+        ports:
+            - 8081:8081
+        environment:
+            ME_CONFIG_MONGODB_ADMINUSERNAME: root
+            ME_CONFIG_MONGODB_ADMINPASSWORD: example
+            ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
+            ME_CONFIG_BASICAUTH: "true"
+        networks:
+            - SAND
 
-  mongo-express:
-    image: mongo-express
-    restart: always
-    ports:
-      - 8081:8081
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: example
-      ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
-      ME_CONFIG_BASICAUTH: false
-    networks:
-      - SAND
-  proxy_node:
-    image: proxy_node
-    restart: on-failure
-    build: ./proxy_image
-    ports:
-      - 50000:8000
-    networks:
-      - SAND
-  main_server:
-    image: main_server
-    restart: on-failure
-    build: ./server_image
-    ports:
-      - 40002:40002
-    networks:
-      - SAND
-  broker:
-    image: apache/kafka:latest
-    container_name: broker
-    ports:
-      - 9092:9092
-      - 9093:9093
-    environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://localhost:9092,CONTROLLER://localhost:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_NUM_PARTITIONS: 3
-    networks:
-      - SAND
+    lookup_service:
+        image: lookup_table_service
+        container_name: lookup_service
+        restart: on-failure
+        build: ./lookup_image
+        networks:
+            - SAND
+
+    gateway:
+        image: gateway
+        container_name: gateway
+        restart: on-failure
+        build: ./gateway_image
+        ports:
+            - 40404:40404
+        networks:
+            - SAND
+
+    proxy_node1:
+        image: proxy_node
+        container_name: proxy_node1
+        restart: on-failure
+        build: ./proxy_image
+        # Put the desired HTTP server port here,
+        # grpc port is exposed -1
+        environment:
+            PORT: 50060
+        ports:
+            - 50061:50061
+        networks:
+            - SAND
+
+    proxy_node2:
+        image: proxy_node
+        container_name: proxy_node2
+        restart: on-failure
+        build: ./proxy_image
+        environment:
+            PORT: 50070
+        ports:
+            - 50071:50071
+        networks:
+            - SAND
+
+    main_server:
+        image: main_server
+        container_name: main_server
+        restart: on-failure
+        build: ./server_image
+        ports:
+            - 40002:40002
+        networks:
+            - SAND
+    broker:
+        image: apache/kafka:latest
+        container_name: broker
+        ports:
+            - 9092:9092
+            - 9094:9094
+            - 9093:9093
+        environment:
+            KAFKA_NODE_ID: 1
+            KAFKA_PROCESS_ROLES: broker,controller
+            KAFKA_LISTENERS: INTERNAL://broker:9092,EXTERNAL://localhost:9094,CONTROLLER://localhost:9093
+            KAFKA_ADVERTISED_LISTENERS: INTERNAL://broker:9092,EXTERNAL://localhost:9094
+            KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+            KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+            KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+            KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+            KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+            KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+            KAFKA_NUM_PARTITIONS: 3
+        networks:
+            - SAND
 networks:
-  SAND:
+    SAND:

@@ -35,7 +35,8 @@ def start_kafka_consumer_service(port):
             "python",
             consumer_service_path,
             str(port),
-        ]
+        ],
+        preexec_fn=os.setsid,
     )
 
 
@@ -89,8 +90,8 @@ async def redirect_request(query: str):
     return RedirectResponse(url=redirect_url)
 
 
-def start_fastapi_server():#
-    uvicorn.run(app, host="localhost", port=PORT)
+def start_fastapi_server():  #
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
 
 
 def shutdown_gracefully(*args):

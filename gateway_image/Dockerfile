@@ -44,5 +44,7 @@ USER appuser
 # Copy the source code into the container.
 COPY . .
 
-# Run python with PORT from environment
-CMD python proxy_node/main.py ${PORT}
+EXPOSE 40404
+
+# Run the application.
+CMD ["python", "gateway/main.py"]
