@@ -17,23 +17,30 @@ lookup_table_lock = threading.Lock()
 DEBUG = True
 
 
-def init_lookup_table(port):
+import grpc
+import json
+from kafka_messaging.consumer import consumer_pb2, consumer_pb2_grpc
+
+
+def init_lookup_table(port, topic):
     try:
         with grpc.insecure_channel(f"localhost:{port}") as channel:
             stub = consumer_pb2_grpc.ConsumerStub(channel)
-            response = stub.GetLatestMessage(consumer_pb2.GetLatestMessageRequest())
+            response = stub.GetLatestMessage(
+                consumer_pb2.GetLatestMessageRequest(topic=topic)
+            )
             # Default to add type "A" here so it updates locally
-            update_lookup_table(response.data, "A", True, 0)
+            update_lookup_table(response.data, "A", True, 0, topic)
     except grpc.RpcError as e:
         print(f"Failed to connect to gRPC server: {e}")
 
 
-def listen_for_new_messages(port):
+def listen_for_new_messages(port, topic):
     try:
         with grpc.insecure_channel(f"localhost:{port}") as channel:
             stub = consumer_pb2_grpc.ConsumerStub(channel)
             for response in stub.ListenForNewMessages(
-                consumer_pb2.ListenForNewMessagesRequest()
+                consumer_pb2.ListenForNewMessagesRequest(topic=topic)
             ):
                 # Extract message type if present
                 # Otherwise default to "A"
@@ -41,7 +48,7 @@ def listen_for_new_messages(port):
                     message = json.loads(response.data)
                     data = message["data"]
                     message_type = message.get("type", "A")
-                    update_lookup_table(data, message_type, True, 0)
+                    update_lookup_table(data, message_type, True, 0, topic)
                 except (KeyError, json.JSONDecodeError):
                     # Fall back to old behavior if the message isn't properly formatted
                     print("error: ", KeyError, json.JSONDecodeError)
@@ -52,7 +59,9 @@ def listen_for_new_messages(port):
             print(f"gRPC error: {e}")
 
 
-def update_lookup_table(data, message_type, received_from_message, kafka_producer_port):
+def update_lookup_table(
+    data, message_type, received_from_message, kafka_producer_port, topic
+):
     global lookup_table
     try:
         # If data is a JSON string, parse it
@@ -80,7 +89,7 @@ def update_lookup_table(data, message_type, received_from_message, kafka_produce
         # Send only the updated value if the update was not received from a message
         if not received_from_message:
             message_payload = {"data": data, "type": message_type}
-            send_message("node-updates", message_payload, kafka_producer_port)
+            send_message(topic, message_payload, kafka_producer_port)
             if DEBUG:
                 print("Message sent:", message_payload)
     except json.JSONDecodeError as e:
@@ -95,6 +104,7 @@ def get_lookup_table():
 
 
 def send_message(topic, data, kafka_producer_port):
+    print("sending message")
     try:
         with grpc.insecure_channel(f"localhost:{kafka_producer_port}") as channel:
             stub = producer_pb2_grpc.ProducerStub(channel)
@@ -106,14 +116,3 @@ def send_message(topic, data, kafka_producer_port):
                 print(f"Sent message status: {response.status}")
     except grpc.RpcError as e:
         print(f"Failed to send message: {e}")
-
-
-def send_deletion_message(port, kafka_producer_port):
-    try:
-        data = [port]
-        message_payload = {"data": data, "type": "D"}
-        send_message("node-updates", message_payload, kafka_producer_port)
-        if DEBUG:
-            print(f"Sent deletion message for port {port}")
-    except Exception as e:
-        print(f"Failed to send deletion message: {e}")

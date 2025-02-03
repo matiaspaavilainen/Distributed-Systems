@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x63onsumer.proto\x12\x08\x63onsumer\"\x19\n\x17GetLatestMessageRequest\"(\n\x18GetLatestMessageResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t\"\x1d\n\x1bListenForNewMessagesRequest\",\n\x1cListenForNewMessagesResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t2\xce\x01\n\x08\x43onsumer\x12Y\n\x10GetLatestMessage\x12!.consumer.GetLatestMessageRequest\x1a\".consumer.GetLatestMessageResponse\x12g\n\x14ListenForNewMessages\x12%.consumer.ListenForNewMessagesRequest\x1a&.consumer.ListenForNewMessagesResponse0\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x63onsumer.proto\x12\x08\x63onsumer\"(\n\x17GetLatestMessageRequest\x12\r\n\x05topic\x18\x01 \x01(\t\"(\n\x18GetLatestMessageResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t\",\n\x1bListenForNewMessagesRequest\x12\r\n\x05topic\x18\x01 \x01(\t\",\n\x1cListenForNewMessagesResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t2\xce\x01\n\x08\x43onsumer\x12Y\n\x10GetLatestMessage\x12!.consumer.GetLatestMessageRequest\x1a\".consumer.GetLatestMessageResponse\x12g\n\x14ListenForNewMessages\x12%.consumer.ListenForNewMessagesRequest\x1a&.consumer.ListenForNewMessagesResponse0\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,13 +32,13 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'consumer_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
   _globals['_GETLATESTMESSAGEREQUEST']._serialized_start=28
-  _globals['_GETLATESTMESSAGEREQUEST']._serialized_end=53
-  _globals['_GETLATESTMESSAGERESPONSE']._serialized_start=55
-  _globals['_GETLATESTMESSAGERESPONSE']._serialized_end=95
-  _globals['_LISTENFORNEWMESSAGESREQUEST']._serialized_start=97
-  _globals['_LISTENFORNEWMESSAGESREQUEST']._serialized_end=126
-  _globals['_LISTENFORNEWMESSAGESRESPONSE']._serialized_start=128
-  _globals['_LISTENFORNEWMESSAGESRESPONSE']._serialized_end=172
-  _globals['_CONSUMER']._serialized_start=175
-  _globals['_CONSUMER']._serialized_end=381
+  _globals['_GETLATESTMESSAGEREQUEST']._serialized_end=68
+  _globals['_GETLATESTMESSAGERESPONSE']._serialized_start=70
+  _globals['_GETLATESTMESSAGERESPONSE']._serialized_end=110
+  _globals['_LISTENFORNEWMESSAGESREQUEST']._serialized_start=112
+  _globals['_LISTENFORNEWMESSAGESREQUEST']._serialized_end=156
+  _globals['_LISTENFORNEWMESSAGESRESPONSE']._serialized_start=158
+  _globals['_LISTENFORNEWMESSAGESRESPONSE']._serialized_end=202
+  _globals['_CONSUMER']._serialized_start=205
+  _globals['_CONSUMER']._serialized_end=411
 # @@protoc_insertion_point(module_scope)

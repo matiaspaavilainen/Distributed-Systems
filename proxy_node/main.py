@@ -1,3 +1,4 @@
+import signal
 import sys
 import os
 import threading
@@ -8,7 +9,7 @@ from fastapi.responses import JSONResponse
 import uvicorn
 import subprocess
 
-# add current dir to path because python imports are annoying
+# Add paths
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from messaging import (
@@ -16,7 +17,7 @@ from messaging import (
     listen_for_new_messages,
     update_lookup_table,
     get_lookup_table,
-    send_deletion_message,
+    send_message,
 )
 
 import grpc_client_SAND
@@ -24,7 +25,12 @@ import grpc_server_SAND
 
 DEBUG = True
 
-MAIN_SERVER_PORT = 50053  # Static port for the main server
+MAIN_SERVER_PORT = 40002  # Static port for the main server
+
+# Topics
+LOOKUP_UPDATES_TOPIC = "lookup-updates"
+LOOKUP_TABLE_TOPIC = "lookup-table"
+NODE_UPDATES = "node-updates"
 
 stop_event = threading.Event()
 
@@ -35,7 +41,9 @@ app = FastAPI()
 async def get_resource(query: str):
     item = find_item_from_any_db(query)
     if item:
-        return JSONResponse(content={"data": item}, status_code=200)
+        return JSONResponse(
+            content={"data": item}, status_code=200, media_type="application/json"
+        )
     else:
         raise HTTPException(status_code=404, detail="Item not found")
 
@@ -69,6 +77,7 @@ def find_item_from_any_db(query):
                     "A",
                     received_from_message=False,
                     kafka_producer_port=KAFKA_PROD_PORT,
+                    topic=NODE_UPDATES,
                 )
                 return {"name": query, "email": item.data}
 
@@ -84,6 +93,7 @@ def find_item_from_any_db(query):
             "A",
             received_from_message=False,
             kafka_producer_port=KAFKA_PROD_PORT,
+            topic=NODE_UPDATES,
         )
         return {"name": query, "email": item.data}
 
@@ -94,7 +104,7 @@ def start_http_server(port):
     uvicorn.run(app, host="localhost", port=port)
 
 
-def start_kafka_consumer_service(topic, port):
+def start_kafka_consumer_service(port):
     consumer_service_path = os.path.join(
         os.path.dirname(__file__), "../kafka_messaging/consumer/consumer_service.py"
     )
@@ -102,9 +112,9 @@ def start_kafka_consumer_service(topic, port):
         [
             "python",
             consumer_service_path,
-            topic,
             str(port),
-        ]
+        ],
+        preexec_fn=os.setsid,
     )
 
 
@@ -117,39 +127,57 @@ def start_kafka_producer_service(port):
             "python",
             producer_service_path,
             str(port),
-        ]
+        ],
+        preexec_fn=os.setsid,
     )
 
 
+def shutdown_gracefully(*args):
+    print("Shutting down gracefully...")
+    send_message(NODE_UPDATES, {"data": [PORT], "type": "D"}, KAFKA_PROD_PORT)
+    time.sleep(2)  # Add a small delay to ensure the message is sent
+    stop_event.set()
+
+    try:
+        kafka_consumer_process.terminate()
+        kafka_consumer_process.wait(timeout=5)
+        kafka_producer_process.terminate()
+        kafka_producer_process.wait(timeout=5)
+    except Exception as e:
+        print(f"Error terminating Kafka process: {e}")
+
+    if kafka_consumer_process.poll() is None:
+        kafka_consumer_process.kill()
+    if kafka_producer_process.poll() is None:
+        kafka_producer_process.kill()
+
+    kafka_thread.join(timeout=5)
+    grpc_thread.join(timeout=5)
+    http_thread.join(timeout=5)
+
+    print("Shutdown complete.")
+    os._exit(
+        0
+    )  # Forcefully exit the process to ensure the terminal returns to a usable state
+
+
 def main(port):
-    global PORT, collection, KAFKA_PROD_PORT
+    global PORT, collection, KAFKA_PROD_PORT, kafka_consumer_process, kafka_producer_process, kafka_thread, grpc_thread, http_thread
     PORT = port
     HTTP_PORT = port + 1
     KAFKA_CON_PORT = port + 2
     KAFKA_PROD_PORT = port + 3
-    # need to have another topic to send the entire table to,
-    # to avoid performance issues when the table grows
-    # this consumer is removed after the initialization
-    KAFKA_INIT_PORT = port + 4
-
-    LOOKUP_UPDATES_TOPIC = "lookup-updates"
-    LOOKUP_TABLE_TOPIC = "lookup-table"
 
     # Dynamically name the database based on the port
     client = MongoClient()
     db_name = f"SAND{port}"
     db = client[db_name]
     collection = db["users"]
+    # Empty the db when started if old still exists
+    collection.drop()
 
-    # Start the Kafka consumer service for updates
-    kafka_consumer_process = start_kafka_consumer_service(
-        LOOKUP_UPDATES_TOPIC, KAFKA_CON_PORT
-    )
-
-    # Start the Kafka consumer service for initialization
-    kafka_init_process = start_kafka_consumer_service(
-        LOOKUP_TABLE_TOPIC, KAFKA_INIT_PORT
-    )
+    # Start the Kafka consumer service
+    kafka_consumer_process = start_kafka_consumer_service(KAFKA_CON_PORT)
 
     # Start the Kafka producer service for this node
     kafka_producer_process = start_kafka_producer_service(KAFKA_PROD_PORT)
@@ -157,19 +185,21 @@ def main(port):
     # Add a delay to give the Kafka services time to start
     time.sleep(3)
 
+    # Register signal handlers for SIGINT and SIGTERM
+    signal.signal(signal.SIGINT, shutdown_gracefully)
+    signal.signal(signal.SIGTERM, shutdown_gracefully)
+
     print("Initializing lookup table")
 
     # Initialize the lookup table
-    init_lookup_table(KAFKA_INIT_PORT)
+    init_lookup_table(KAFKA_CON_PORT, LOOKUP_TABLE_TOPIC)
+    # Send message with just the port to mark the node active
 
     print("Lookuptable initialized: ", get_lookup_table())
 
-    kafka_init_process.kill()  # Use kill() to terminate the temporary Kafka consumer process
-    kafka_init_process.wait()  # Ensure the process is properly reaped
-
     # Start the Kafka listener thread
     kafka_thread = threading.Thread(
-        target=listen_for_new_messages, args=(KAFKA_CON_PORT,)
+        target=listen_for_new_messages, args=(KAFKA_CON_PORT, LOOKUP_UPDATES_TOPIC)
     )
     kafka_thread.start()
 
@@ -183,30 +213,17 @@ def main(port):
     http_thread = threading.Thread(target=start_http_server, args=(HTTP_PORT,))
     http_thread.start()
 
+    send_message(NODE_UPDATES, {"data": [PORT], "type": "I"}, KAFKA_PROD_PORT)
+
+    # Keep the main thread running
     try:
-        # Keep the main thread running
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("Shutting down gracefully...")
-        stop_event.set()
-        send_deletion_message(PORT, KAFKA_PROD_PORT)
-        kafka_consumer_process.kill()  # Use kill() to forcefully terminate the Kafka consumer process
-        kafka_producer_process.kill()  # Use kill() to forcefully terminate the Kafka producer process
-        kafka_consumer_process.wait()
-        kafka_producer_process.wait()
-        kafka_thread.join()  # Ensure the Kafka listener thread is properly terminated
-        grpc_thread.join()  # Ensure the gRPC server thread is properly terminated
-        http_thread.join()  # Ensure the HTTP server thread is properly terminated
-        print("Shutdown complete.")
-    finally:
-        # Ensure subprocesses are terminated
-        if kafka_consumer_process.poll() is None:
-            kafka_consumer_process.kill()
-        if kafka_producer_process.poll() is None:
-            kafka_producer_process.kill()
-        kafka_consumer_process.wait()
-        kafka_producer_process.wait()
+        shutdown_gracefully()
+    except Exception as e:
+        print(f"Error in main: {e}")
+        shutdown_gracefully()
 
 
 if __name__ == "__main__":
