@@ -1,3 +1,4 @@
+import signal
 import sys
 import os
 import threading
@@ -24,8 +25,10 @@ LOOKUP_TABLE_TOPIC = "lookup-table"
 
 DEBUG = True
 
+stop_event = threading.Event()
 
-def start_kafka_consumer_service(topic, port):
+
+def start_kafka_consumer_service(port):
     consumer_service_path = os.path.join(
         os.path.dirname(__file__), "../kafka_messaging/consumer/consumer_service.py"
     )
@@ -33,7 +36,6 @@ def start_kafka_consumer_service(topic, port):
         [
             "python",
             consumer_service_path,
-            topic,
             str(port),
         ]
     )
@@ -97,6 +99,14 @@ def update_table(data, update_type):
                 # Remove the entire entry for the given port
                 collection.delete_one({"port": port})
 
+        elif update_type == "I":
+            for port in data:
+                port = int(port)
+                # Initialize the entry with an empty values list
+                collection.update_one(
+                    {"port": port}, {"$set": {"values": []}}, upsert=True
+                )
+
         # Send the update to the lookup-updates topic
         send_update(data, update_type)
         # broadcast the updated table
@@ -106,13 +116,15 @@ def update_table(data, update_type):
 
 
 def process_updates():
-    while True:
+    while not stop_event.is_set():
         try:
             with grpc.insecure_channel(f"localhost:{CONSUMER_PORT}") as channel:
                 stub = consumer_pb2_grpc.ConsumerStub(channel)
                 for response in stub.ListenForNewMessages(
-                    consumer_pb2.ListenForNewMessagesRequest()
+                    consumer_pb2.ListenForNewMessagesRequest(topic=UPDATES_TOPIC)
                 ):
+                    if stop_event.is_set():
+                        break
                     message = json.loads(response.data)
                     update_table(message["data"], message["type"])
         except Exception as e:
@@ -120,37 +132,62 @@ def process_updates():
             time.sleep(1)
 
 
+def shutdown_gracefully(*args):
+    print("Shutting down gracefully...")
+    stop_event.set()
+
+    try:
+        kafka_consumer_process.terminate()
+        kafka_consumer_process.wait(timeout=5)
+        kafka_producer_process.terminate()
+        kafka_producer_process.wait(timeout=5)
+    except Exception as e:
+        print(f"Error terminating Kafka process: {e}")
+
+    if process_thread.is_alive():
+        process_thread.join(timeout=5)
+
+    print("Shutdown complete.")
+    os._exit(
+        0
+    )  # Forcefully exit the process to ensure the terminal returns to a usable state
+
+
 def main():
-    global collection
+    global collection, kafka_consumer_process, process_thread, kafka_producer_process
 
     # Database setup
     client = MongoClient()
     db = client["LOOKUP"]
     collection = db["lookup"]
+    collection.drop()
     collection.create_index("port", unique=True)
 
     # Start Kafka services
-    consumer_process = start_kafka_consumer_service(UPDATES_TOPIC, CONSUMER_PORT)
-    producer_process = start_kafka_producer_service(PRODUCER_PORT)
+    kafka_consumer_process = start_kafka_consumer_service(CONSUMER_PORT)
+    kafka_producer_process = start_kafka_producer_service(PRODUCER_PORT)
 
     # Allow services to start
     time.sleep(5)
+
+    # Register signal handlers for SIGINT and SIGTERM
+    signal.signal(signal.SIGINT, shutdown_gracefully)
+    signal.signal(signal.SIGTERM, shutdown_gracefully)
 
     # Start update processing thread
     process_thread = threading.Thread(target=process_updates)
     process_thread.daemon = True
     process_thread.start()
 
+    # Keep the main thread running
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("Shutting down...")
-        consumer_process.kill()
-        producer_process.kill()
-        consumer_process.wait()
-        producer_process.wait()
-        print("Shutdown complete")
+        shutdown_gracefully()
+    except Exception as e:
+        print(f"Error in main: {e}")
+        shutdown_gracefully()
 
 
 if __name__ == "__main__":
