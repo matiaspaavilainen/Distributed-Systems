@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import data_pb2 as data__pb2
+import data_pb2 as protos_dot_data__pb2
 
 GRPC_GENERATED_VERSION = '1.69.0'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in data_pb2_grpc.py depends on'
+        + f' but the generated code in protos/data_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -36,8 +36,8 @@ class RequestServiceStub(object):
         """
         self.RequestData = channel.unary_unary(
                 '/SAND.RequestService/RequestData',
-                request_serializer=data__pb2.Request.SerializeToString,
-                response_deserializer=data__pb2.RequestReply.FromString,
+                request_serializer=protos_dot_data__pb2.Request.SerializeToString,
+                response_deserializer=protos_dot_data__pb2.RequestReply.FromString,
                 _registered_method=True)
 
 
@@ -55,8 +55,8 @@ def add_RequestServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'RequestData': grpc.unary_unary_rpc_method_handler(
                     servicer.RequestData,
-                    request_deserializer=data__pb2.Request.FromString,
-                    response_serializer=data__pb2.RequestReply.SerializeToString,
+                    request_deserializer=protos_dot_data__pb2.Request.FromString,
+                    response_serializer=protos_dot_data__pb2.RequestReply.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -84,8 +84,8 @@ class RequestService(object):
             request,
             target,
             '/SAND.RequestService/RequestData',
-            data__pb2.Request.SerializeToString,
-            data__pb2.RequestReply.FromString,
+            protos_dot_data__pb2.Request.SerializeToString,
+            protos_dot_data__pb2.RequestReply.FromString,
             options,
             channel_credentials,
             insecure,
