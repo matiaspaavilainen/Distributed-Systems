@@ -1,10 +1,8 @@
 1. "run docker-compose up --build" in the directory where compose.yaml is
-2. wait for the kafka broker to start
-3. check the kafka container log, if there are mentions of the topics skip to step 8.
+2. wait for the thigns to start, nodes, gateway and lookup should wait for kafka to start
+3. If starting takes long, 30 seconds or something do 4-7
 4. In a new terminal window, run: "docker exec --workdir /opt/kafka/bin/ -it broker sh"
 5. run: "./kafka-topics.sh --bootstrap-server localhost:9094 --create --topic node-updates"
 6. run: "./kafka-topics.sh --bootstrap-server localhost:9094 --create --topic lookup-updates"
 7. run: "./kafka-topics.sh --bootstrap-server localhost:9094 --create --topic lookup-table"
-8. Restart both proxy_node1 and 2 containers
-9. Should now work, in browser: "localhost:40404/query/John%20Doe"
-10. If not restart first the gateway, then lookupservice then both nodes
+8. Should now work, in browser or postman: "localhost:40404/query/John%20Doe"
