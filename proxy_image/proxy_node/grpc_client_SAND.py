@@ -18,9 +18,9 @@ def make_request(stub, name):
     return reply
 
 
-def run(query, port):
-    with grpc.insecure_channel(f"main_server:{port}") as channel:
+def run(query, address):
+    with grpc.insecure_channel(f"{address}") as channel:
         stub = data_pb2_grpc.RequestServiceStub(channel)
         if DEBUG:
-            print(f"-------------- Make request to port {port} --------------")
+            print(f"-------------- Make request to port {address} --------------")
         return make_request(stub, query)

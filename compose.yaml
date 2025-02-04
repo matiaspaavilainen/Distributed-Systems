@@ -74,16 +74,29 @@ services:
         build: ./lookup_image
         networks:
             - SAND
+        depends_on:
+            broker:
+                condition: service_healthy
 
     gateway:
         image: gateway
         container_name: gateway
         restart: on-failure
         build: ./gateway_image
+        environment:
+            # The hostname of where the containers are running
+            # for docker localhost works
+            # Kubernetes service, maybe?
+            # EXTERNAL_HOST: gateway.default.svc.cluster.local
+            # Needed for redirecting http requests
+            EXTERNAL_HOST: localhost
         ports:
             - 40404:40404
         networks:
             - SAND
+        depends_on:
+            broker:
+                condition: service_healthy
 
     proxy_node1:
         image: proxy_node
@@ -98,6 +111,9 @@ services:
             - 50061:50061
         networks:
             - SAND
+        depends_on:
+            broker:
+                condition: service_healthy
 
     proxy_node2:
         image: proxy_node
@@ -110,6 +126,9 @@ services:
             - 50071:50071
         networks:
             - SAND
+        depends_on:
+            broker:
+                condition: service_healthy
 
     main_server:
         image: main_server
@@ -143,5 +162,15 @@ services:
             KAFKA_NUM_PARTITIONS: 3
         networks:
             - SAND
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9094 --list",
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 15s
 networks:
     SAND:

@@ -3,10 +3,10 @@ import sys
 import os
 import threading
 import time
-from pymongo import MongoClient
 import subprocess
 import json
 import grpc
+from pymongo import MongoClient
 
 # Add paths
 sys.path.append(os.path.join(os.path.dirname(__file__), "../kafka_messaging/consumer"))
@@ -22,10 +22,14 @@ PRODUCER_PORT = 40001
 NODE_UPDATES_TOPIC = "node-updates"
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
 LOOKUP_TABLE_TOPIC = "lookup-table"
-
 DEBUG = True
 
+# Global variables
 stop_event = threading.Event()
+collection = None
+kafka_consumer_process = None
+kafka_producer_process = None
+process_thread = None
 
 
 def start_kafka_consumer_service(port):
@@ -58,9 +62,12 @@ def start_kafka_producer_service(port):
 
 def broadcast_table():
     try:
+        # Kafka can be localhost for now
         with grpc.insecure_channel(f"localhost:{PRODUCER_PORT}") as channel:
             stub = producer_pb2_grpc.ProducerStub(channel)
-            table_data = {str(doc["port"]): doc["values"] for doc in collection.find()}
+            table_data = {
+                str(doc["address"]): doc["values"] for doc in collection.find()
+            }
             request = producer_pb2.SendMessageRequest(
                 topic=LOOKUP_TABLE_TOPIC, data=json.dumps(table_data)
             )
@@ -73,6 +80,7 @@ def broadcast_table():
 
 def send_update(data, update_type):
     try:
+        # Kafka can be localhost for now
         with grpc.insecure_channel(f"localhost:{PRODUCER_PORT}") as channel:
             stub = producer_pb2_grpc.ProducerStub(channel)
             update_data = {"data": data, "type": update_type}
@@ -87,26 +95,26 @@ def send_update(data, update_type):
 def update_table(data, update_type):
     try:
         if update_type == "A":
-            for port, values in data.items():
-                port = int(port)
+            for address, values in data.items():
+                address = str(address)
                 # Add or update values
                 collection.update_one(
-                    {"port": port},
+                    {"address": address},
                     {"$addToSet": {"values": {"$each": values}}},
                     upsert=True,
                 )
         elif update_type == "D":
-            for port in data:
-                port = int(port)
-                # Remove the entire entry for the given port
-                collection.delete_one({"port": port})
+            for address in data:
+                address = str(address)
+                # Remove the entire entry for the given address
+                collection.delete_one({"address": address})
 
         elif update_type == "I":
-            for port in data:
-                port = int(port)
+            for address in data:
+                address = str(address)
                 # Initialize the entry with an empty values list
                 collection.update_one(
-                    {"port": port}, {"$set": {"values": []}}, upsert=True
+                    {"address": address}, {"$set": {"values": []}}, upsert=True
                 )
 
         # Send the update to the lookup-updates topic
@@ -119,28 +127,19 @@ def update_table(data, update_type):
 
 def process_updates():
     while not stop_event.is_set():
-        # try:
-        #     with grpc.insecure_channel(f"localhost:{CONSUMER_PORT}") as channel:
-        #         stub = consumer_pb2_grpc.ConsumerStub(channel)
-        #         for response in stub.ListenForNewMessages(
-        #             consumer_pb2.ListenForNewMessagesRequest()
-        #         ):
-        #             if stop_event.is_set():
-        #                 break
-        #             message = json.loads(response.data)
-        #             update_table(message["data"], message["type"])
-        # except Exception as e:
-        #     print(f"Error processing updates: {e}, {e.__traceback__}")
-        #     time.sleep(1)
-        with grpc.insecure_channel(f"localhost:{CONSUMER_PORT}") as channel:
-            stub = consumer_pb2_grpc.ConsumerStub(channel)
-            for response in stub.ListenForNewMessages(
-                consumer_pb2.ListenForNewMessagesRequest(topic=NODE_UPDATES_TOPIC)
-            ):
-                if stop_event.is_set():
-                    break
-                message = json.loads(response.data)
-                update_table(message["data"], message["type"])
+        try:
+            with grpc.insecure_channel(f"localhost:{CONSUMER_PORT}") as channel:
+                stub = consumer_pb2_grpc.ConsumerStub(channel)
+                for response in stub.ListenForNewMessages(
+                    consumer_pb2.ListenForNewMessagesRequest(topic=NODE_UPDATES_TOPIC)
+                ):
+                    if stop_event.is_set():
+                        break
+                    message = json.loads(response.data)
+                    update_table(message["data"], message["type"])
+        except Exception as e:
+            print(f"Error processing updates: {e}")
+            time.sleep(1)
 
 
 def shutdown_gracefully(*args):
@@ -174,7 +173,7 @@ def main():
     db = client["LOOKUP"]
     collection = db["lookup"]
     collection.drop()
-    collection.create_index("port", unique=True)
+    collection.create_index("address", unique=True)
 
     # Start Kafka services
     kafka_consumer_process = start_kafka_consumer_service(CONSUMER_PORT)

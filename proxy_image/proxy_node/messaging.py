@@ -19,12 +19,14 @@ DEBUG = True
 
 def init_lookup_table(port, topic):
     try:
+        # Comms with the kafka service, can be localhost for now
         with grpc.insecure_channel(f"localhost:{port}") as channel:
             stub = consumer_pb2_grpc.ConsumerStub(channel)
             response = stub.GetLatestMessage(
                 consumer_pb2.GetLatestMessageRequest(topic=topic)
             )
             # Default to add type "A" here so it updates locally
+            # Port and topic not used for local updates
             update_lookup_table(response.data, "A", True, 0, topic)
     except grpc.RpcError as e:
         print(f"Failed to connect to gRPC server: {e}")
@@ -32,6 +34,7 @@ def init_lookup_table(port, topic):
 
 def listen_for_new_messages(port, topic):
     try:
+        # Comms with the kafka service, can be localhost for now
         with grpc.insecure_channel(f"localhost:{port}") as channel:
             stub = consumer_pb2_grpc.ConsumerStub(channel)
             for response in stub.ListenForNewMessages(
@@ -66,20 +69,20 @@ def update_lookup_table(
         with lookup_table_lock:
             if message_type == "A":
                 # Add or update
-                for port, values in data.items():
-                    port = int(port)
-                    if port not in lookup_table:
-                        lookup_table[port] = values
+                for address, values in data.items():
+                    address = str(address)
+                    if address not in lookup_table:
+                        lookup_table[address] = values
                     else:
                         for value in values:
-                            if value not in lookup_table[port]:
-                                lookup_table[port].append(value)
+                            if value not in lookup_table[address]:
+                                lookup_table[address].append(value)
             elif message_type == "D":
                 # Delete the entire entry for the given port(s)
-                for port in data:
-                    port = int(port)
-                    if port in lookup_table:
-                        del lookup_table[port]
+                for address in data:
+                    address = str(address)
+                    if address in lookup_table:
+                        del lookup_table[address]
 
         # Send only the updated value if the update was not received from a message
         if not received_from_message:
@@ -100,6 +103,7 @@ def get_lookup_table():
 
 def send_message(topic, data, kafka_producer_port):
     try:
+        # Kafka can be localhost for now
         with grpc.insecure_channel(f"localhost:{kafka_producer_port}") as channel:
             stub = producer_pb2_grpc.ProducerStub(channel)
             request = producer_pb2.SendMessageRequest(

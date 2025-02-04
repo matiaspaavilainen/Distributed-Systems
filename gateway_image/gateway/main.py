@@ -2,28 +2,34 @@ import sys
 import os
 import threading
 import time
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import RedirectResponse
 import grpc
 import uvicorn
 import json
 import signal
 import subprocess
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 
+# Add paths
 sys.path.append(os.path.join(os.path.dirname(__file__), "../kafka_messaging/consumer"))
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from kafka_messaging.consumer import consumer_pb2, consumer_pb2_grpc
 
+# Constants
 CONSUMER_PORT = 40003
 PORT = 40404
+EXTERNAL_HOST = os.getenv("EXTERNAL_HOST", "localhost")
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
 DEBUG = True
 
+# Global variables
 app = FastAPI()
 active_nodes = []
 lock = threading.Lock()
 stop_event = threading.Event()
+kafka_consumer_process = None
+fastapi_thread = None
 
 
 def start_kafka_consumer_service(port):
@@ -41,6 +47,7 @@ def start_kafka_consumer_service(port):
 
 
 def listen_for_updates():
+    # Kafka localhost
     with grpc.insecure_channel(f"localhost:{CONSUMER_PORT}") as channel:
         stub = consumer_pb2_grpc.ConsumerStub(channel)
         while not stop_event.is_set():
@@ -56,14 +63,14 @@ def listen_for_updates():
                         message_type = message.get("type")
                         if message_type == "I":
                             with lock:
-                                for port in data:
-                                    if port not in active_nodes:
-                                        active_nodes.append(port)
+                                for address in data:
+                                    if address not in active_nodes:
+                                        active_nodes.append(address)
                         elif message_type == "D":
                             with lock:
-                                for port in data:
-                                    if port in active_nodes:
-                                        active_nodes.remove(port)
+                                for address in data:
+                                    if address in active_nodes:
+                                        active_nodes.remove(address)
                         if DEBUG:
                             print(f"Updated active nodes: {active_nodes}")
                     except (KeyError, json.JSONDecodeError) as e:
@@ -82,15 +89,20 @@ async def redirect_request(query: str):
     with lock:
         if not active_nodes:
             raise HTTPException(status_code=503, detail="No active nodes available")
-        node_port = active_nodes.pop(0)
-        active_nodes.append(node_port)
-    # Redirect port is +1, because the grpc port is used as the identifier for nodes
-    # HTTP server port is grpc port + 1
-    redirect_url = f"http://localhost:{node_port + 1}/resource/{query}"
+        node_address = active_nodes.pop(0)
+        active_nodes.append(node_address)
+
+    port = str(node_address).split(":")[-1]
+    redirect_port = int(port) + 1
+
+    # Build complete URL with http:// prefix
+    redirect_url = f"http://{EXTERNAL_HOST}:{redirect_port}/resource/{query}"
+    print("Redirecting to:", redirect_url)
+
     return RedirectResponse(url=redirect_url)
 
 
-def start_fastapi_server():  #
+def start_fastapi_server():
     uvicorn.run(app, host="0.0.0.0", port=PORT)
 
 

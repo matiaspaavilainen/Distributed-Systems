@@ -3,11 +3,12 @@ import sys
 import os
 import threading
 import time
+import subprocess
+import socket
 from pymongo import MongoClient
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 import uvicorn
-import subprocess
 
 # Add paths
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -23,8 +24,8 @@ from messaging import (
 import grpc_client_SAND
 import grpc_server_SAND
 
+# Constants
 DEBUG = True
-
 MAIN_SERVER_PORT = 40002  # Static port for the main server
 
 # Topics
@@ -32,9 +33,17 @@ LOOKUP_UPDATES_TOPIC = "lookup-updates"
 LOOKUP_TABLE_TOPIC = "lookup-table"
 NODE_UPDATES = "node-updates"
 
+# Global variables
 stop_event = threading.Event()
-
 app = FastAPI()
+PORT = None
+collection = None
+KAFKA_PROD_PORT = None
+kafka_consumer_process = None
+kafka_producer_process = None
+kafka_thread = None
+grpc_thread = None
+http_thread = None
 
 
 @app.get("/resource/{query}")
@@ -63,18 +72,19 @@ def find_item_from_any_db(query):
         return {"name": query, "email": item}
 
     lookup_table = get_lookup_table()
-    for port, values in lookup_table.items():
+    for address, values in lookup_table.items():
         if query in values:
             if DEBUG:
-                print(f"Item found in lookup table at port {port}")
-            item = grpc_client_SAND.run(query, port)
+                print(f"Item found in lookup table at {address}")
+            item = grpc_client_SAND.run(query, address)
             if item and item.data:
                 collection.insert_one({"name": query, "email": item.data})
                 print("Added " + str(item) + " to the local database")
                 # Update the lookup table on the local node
                 update_lookup_table(
-                    {PORT: [query]},
-                    "A",
+                    # Construct a key with the hostname and port
+                    {f"{socket.gethostname()}:{PORT}": [query]},
+                    message_type="A",
                     received_from_message=False,
                     kafka_producer_port=KAFKA_PROD_PORT,
                     topic=NODE_UPDATES,
@@ -83,13 +93,13 @@ def find_item_from_any_db(query):
 
     if DEBUG:
         print("Item not found in lookup table, sending request to the main server")
-    item = grpc_client_SAND.run(query, MAIN_SERVER_PORT)
+    item = grpc_client_SAND.run(query, f"main_server:{MAIN_SERVER_PORT}")
     if item and item.data:
         collection.insert_one({"name": query, "email": item.data})
         print("Added " + str(item) + " to the local database")
         # Update the lookup table on the local node only
         update_lookup_table(
-            {PORT: [query]},
+            {f"{socket.gethostname()}:{PORT}": [query]},
             "A",
             received_from_message=False,
             kafka_producer_port=KAFKA_PROD_PORT,
@@ -134,7 +144,11 @@ def start_kafka_producer_service(port):
 
 def shutdown_gracefully(*args):
     print("Shutting down gracefully...")
-    send_message(NODE_UPDATES, {"data": [PORT], "type": "D"}, KAFKA_PROD_PORT)
+    send_message(
+        NODE_UPDATES,
+        {"data": [f"{socket.gethostname()}:{PORT}"], "type": "D"},
+        KAFKA_PROD_PORT,
+    )
     time.sleep(2)  # Add a small delay to ensure the message is sent
     stop_event.set()
 
@@ -175,6 +189,7 @@ def main(port):
     db_name = f"SAND{port}"
     db = client[db_name]
     collection = db["users"]
+    collection.drop()
 
     # Start the Kafka consumer service
     kafka_consumer_process = start_kafka_consumer_service(KAFKA_CON_PORT)
@@ -193,9 +208,6 @@ def main(port):
 
     # Initialize the lookup table
     init_lookup_table(KAFKA_CON_PORT, LOOKUP_TABLE_TOPIC)
-    # Send message with just the port to mark the node active
-
-    print("Lookuptable initialized: ", get_lookup_table())
 
     # Start the Kafka listener thread
     kafka_thread = threading.Thread(
@@ -213,7 +225,13 @@ def main(port):
     http_thread = threading.Thread(target=start_http_server, args=(HTTP_PORT,))
     http_thread.start()
 
-    send_message(NODE_UPDATES, {"data": [PORT], "type": "I"}, KAFKA_PROD_PORT)
+    send_message(
+        NODE_UPDATES,
+        {"data": [f"{socket.gethostname()}:{PORT}"], "type": "I"},
+        KAFKA_PROD_PORT,
+    )
+
+    print("Lookuptable initialized: ", get_lookup_table())
 
     # Keep the main thread running
     try:

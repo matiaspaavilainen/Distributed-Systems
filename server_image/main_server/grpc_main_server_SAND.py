@@ -1,6 +1,6 @@
 from concurrent import futures
 import logging
-
+import socket
 import grpc
 import data_pb2
 import data_pb2_grpc
@@ -39,7 +39,7 @@ def serve():
     data_pb2_grpc.add_RequestServiceServicer_to_server(RequestServicer(), server)
     server.add_insecure_port("[::]:40002")
     server.start()
-    print("Started service")
+    print(f"Started service at: {socket.gethostname()}:40002")
     server.wait_for_termination()
 
 
