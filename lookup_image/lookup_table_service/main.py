@@ -163,14 +163,13 @@ def shutdown_gracefully(*args):
     )  # Forcefully exit the process to ensure the terminal returns to a usable state
 
 
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-service:27017")
-
-
 def main():
     global collection, kafka_consumer_process, process_thread, kafka_producer_process
 
     # Database setup
-    client = MongoClient(MONGO_URL)
+    client = MongoClient(
+        "mongo", 27017, username="root", password="example", authSource="admin"
+    )
     db = client["LOOKUP"]
     collection = db["lookup"]
     collection.drop()
