@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Common resources used in the gRPC route guide example."""
+import os
 from pymongo import MongoClient
 
-# This needs to connect to the database container, needs not to be hardcoded
-client = client = MongoClient(
-    "mongo", 27017, username="root", password="example", authSource="admin"
-)
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-service:27017")
+client = MongoClient(MONGO_URL)
 db = client.SAND
 collection = db["users"]
 

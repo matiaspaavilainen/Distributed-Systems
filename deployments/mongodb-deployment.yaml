@@ -28,6 +28,7 @@ spec:
             volumes:
                 - name: mongo-init
                   hostPath:
+                      # need to change this to dynamic or some other way to run the init
                       path: /home/matias/Documents/Ohjelmointi/Distributed-Systems/mongo-init
 ---
 apiVersion: v1
