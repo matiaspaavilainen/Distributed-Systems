@@ -175,6 +175,10 @@ def shutdown_gracefully(*args):
     )  # Forcefully exit the process to ensure the terminal returns to a usable state
 
 
+# Use the correct MongoDB service name
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-service:27017")
+
+
 def main(port):
     global PORT, collection, KAFKA_PROD_PORT, kafka_consumer_process, kafka_producer_process, kafka_thread, grpc_thread, http_thread
     PORT = port
@@ -183,9 +187,7 @@ def main(port):
     KAFKA_PROD_PORT = port + 3
 
     # Dynamically name the database based on the port
-    client = MongoClient(
-        "mongo", 27017, username="root", password="example", authSource="admin"
-    )
+    client = MongoClient(MONGO_URL)
     db_name = f"SAND{port}"
     db = client[db_name]
     collection = db["users"]

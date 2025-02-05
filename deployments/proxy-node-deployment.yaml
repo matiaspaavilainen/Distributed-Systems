@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: proxy-node
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: proxy-node
+    template:
+        metadata:
+            labels:
+                app: proxy-node
+        spec:
+            containers:
+                - name: proxy-node
+                  image: matiaspaavilainen/distributed-systems:proxy_node
+                  ports:
+                      - containerPort: 50061
+                  env:
+                      - name: PORT
+                        value: "50060"
+                      - name: MONGO_URL
+                        value: "mongodb://root:example@mongodb-service:27017"
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: proxy-node-service
+spec:
+    selector:
+        app: proxy-node
+    ports:
+        - protocol: TCP
+          port: 50061
+          targetPort: 50061
+    type: NodePort
