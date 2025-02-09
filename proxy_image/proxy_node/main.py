@@ -26,7 +26,7 @@ import grpc_server_SAND
 
 # Constants
 DEBUG = True
-MAIN_SERVER_PORT = 40002  # Static port for the main server
+MAIN_SERVER_ADDRESS = "server-service:40002"
 
 # Topics
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
@@ -93,7 +93,7 @@ def find_item_from_any_db(query):
 
     if DEBUG:
         print("Item not found in lookup table, sending request to the main server")
-    item = grpc_client_SAND.run(query, f"main_server:{MAIN_SERVER_PORT}")
+    item = grpc_client_SAND.run(query, MAIN_SERVER_ADDRESS)
     if item and item.data:
         collection.insert_one({"name": query, "email": item.data})
         print("Added " + str(item) + " to the local database")
