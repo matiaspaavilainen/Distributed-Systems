@@ -27,9 +27,8 @@ spec:
                         mountPath: /docker-entrypoint-initdb.d
             volumes:
                 - name: mongo-init
-                  hostPath:
-                      # need to change this to dynamic or some other way to run the init
-                      path: /home/matias/Documents/Ohjelmointi/Distributed-Systems/mongo-init
+                  configMap:
+                      name: mongo-init-script
 ---
 apiVersion: v1
 kind: Service

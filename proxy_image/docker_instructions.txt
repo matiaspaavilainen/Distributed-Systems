@@ -1,3 +1,5 @@
+DOCKER from main branch
+
 1. "run docker-compose up --build" in the directory where compose.yaml is
 2. wait for the thigns to start, nodes, gateway and lookup should wait for kafka to start
 3. If starting takes long, 30 seconds or something do 4-7
@@ -6,3 +8,25 @@
 6. run: "./kafka-topics.sh --bootstrap-server localhost:9094 --create --topic lookup-updates"
 7. run: "./kafka-topics.sh --bootstrap-server localhost:9094 --create --topic lookup-table"
 8. Should now work, in browser or postman: "localhost:40404/query/John%20Doe"
+
+
+
+KUBERNETES
+
+1. start minikube
+2. follow this: https://strimzi.io/quickstarts/ , this is the last command: kubectl wait kafka/my-cluster --for=condition=Ready --timeout=300s -n kafka
+3. kubectl apply -f zookeeper.yaml, wait for this to start before next step
+4. kubectl apply -f kafka-broker.yaml
+5. kubectl apply -f server-deployment.yaml
+6. kubectl apply -f mongodb-configmap.yaml
+7. kubectl apply -f mongodb-deployment.yaml
+8. wait for both kafkas to start
+9. kubectl apply -f lookup.yaml
+10. kubectl apply -f proxy-node-deployment.yaml
+
+Idk if need to make topics for the kafka. If it doesn't seem to work, 3 dots on kafka pod and exec.
+Make topics with "kafka-topics.sh --bootstrap-server broker:9092 --create --topic node-updates" etc.
+
+11. To send http request to node, new terminal. run "minikube service proxy-node"
+12. This opens browser, add "/resource/Jane Doe" after the port.
+13. Should return the data

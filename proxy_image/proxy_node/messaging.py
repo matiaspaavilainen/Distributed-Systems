@@ -4,12 +4,12 @@ import os
 import sys
 import threading
 
-# Add the kafka_messaging/consumer and kafka_messaging/producer directories to the PYTHONPATH
 sys.path.append(os.path.join(os.path.dirname(__file__), "../kafka_messaging/consumer"))
 sys.path.append(os.path.join(os.path.dirname(__file__), "../kafka_messaging/producer"))
 
 from kafka_messaging.consumer import consumer_pb2, consumer_pb2_grpc
 from kafka_messaging.producer import producer_pb2, producer_pb2_grpc
+
 
 lookup_table = {}
 lookup_table_lock = threading.Lock()
@@ -19,17 +19,20 @@ DEBUG = True
 
 def init_lookup_table(port, topic):
     try:
+        print(f"Connecting to Kafka consumer service on port {port} for topic {topic}")
         # Comms with the kafka service, can be localhost for now
         with grpc.insecure_channel(f"localhost:{port}") as channel:
             stub = consumer_pb2_grpc.ConsumerStub(channel)
-            response = stub.GetLatestMessage(
-                consumer_pb2.GetLatestMessageRequest(topic=topic)
-            )
+            request = consumer_pb2.GetLatestMessageRequest(topic=topic)
+            response = stub.GetLatestMessage(request)
             # Default to add type "A" here so it updates locally
             # Port and topic not used for local updates
             update_lookup_table(response.data, "A", True, 0, topic)
+
     except grpc.RpcError as e:
         print(f"Failed to connect to gRPC server: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
 
 
 def listen_for_new_messages(port, topic):

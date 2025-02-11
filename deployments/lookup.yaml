@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: lookup
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: lookup
+    template:
+        metadata:
+            labels:
+                app: lookup
+        spec:
+            containers:
+                - name: lookup
+                  image: matiaspaavilainen/distributed-systems:lookup_service
+                  imagePullPolicy: Always
+                  env:
+                      - name: MONGO_URL
+                        value: "mongodb://root:example@mongodb-service:27017"
+                      - name: PYTHONPATH
+                        value: "/app:/app/kafka_messaging"
+                - name: kafka-services
+                  image: matiaspaavilainen/distributed-systems:kafka_services
+                  imagePullPolicy: Always
+                  env:
+                      - name: PORT_BASE
+                        value: "30000"
+                      - name: PYTHONPATH
+                        value: "/app/consumer:/app/producer"

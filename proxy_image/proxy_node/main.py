@@ -1,10 +1,9 @@
-import signal
 import sys
 import os
 import threading
 import time
-import subprocess
 import socket
+import grpc
 from pymongo import MongoClient
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
@@ -33,17 +32,8 @@ LOOKUP_UPDATES_TOPIC = "lookup-updates"
 LOOKUP_TABLE_TOPIC = "lookup-table"
 NODE_UPDATES = "node-updates"
 
-# Global variables
-stop_event = threading.Event()
 app = FastAPI()
-PORT = None
-collection = None
-KAFKA_PROD_PORT = None
-kafka_consumer_process = None
-kafka_producer_process = None
-kafka_thread = None
-grpc_thread = None
-http_thread = None
+stop_event = threading.Event()
 
 
 @app.get("/resource/{query}")
@@ -110,36 +100,19 @@ def find_item_from_any_db(query):
     return None
 
 
+def test_server_connection():
+    try:
+        with grpc.insecure_channel(MAIN_SERVER_ADDRESS) as channel:
+            grpc.channel_ready_future(channel).result(timeout=5)
+            print(f"Successfully connected to {MAIN_SERVER_ADDRESS}")
+            return True
+    except Exception as e:
+        print(f"Failed to connect to {MAIN_SERVER_ADDRESS}: {e}")
+        return False
+
+
 def start_http_server(port):
     uvicorn.run(app, host="0.0.0.0", port=port)
-
-
-def start_kafka_consumer_service(port):
-    consumer_service_path = os.path.join(
-        os.path.dirname(__file__), "../kafka_messaging/consumer/consumer_service.py"
-    )
-    return subprocess.Popen(
-        [
-            "python",
-            consumer_service_path,
-            str(port),
-        ],
-        preexec_fn=os.setsid,
-    )
-
-
-def start_kafka_producer_service(port):
-    producer_service_path = os.path.join(
-        os.path.dirname(__file__), "../kafka_messaging/producer/producer_service.py"
-    )
-    return subprocess.Popen(
-        [
-            "python",
-            producer_service_path,
-            str(port),
-        ],
-        preexec_fn=os.setsid,
-    )
 
 
 def shutdown_gracefully(*args):
@@ -149,30 +122,16 @@ def shutdown_gracefully(*args):
         {"data": [f"{socket.gethostname()}:{PORT}"], "type": "D"},
         KAFKA_PROD_PORT,
     )
-    time.sleep(2)  # Add a small delay to ensure the message is sent
+    time.sleep(2)
     stop_event.set()
 
-    try:
-        kafka_consumer_process.terminate()
-        kafka_consumer_process.wait(timeout=5)
-        kafka_producer_process.terminate()
-        kafka_producer_process.wait(timeout=5)
-    except Exception as e:
-        print(f"Error terminating Kafka process: {e}")
-
-    if kafka_consumer_process.poll() is None:
-        kafka_consumer_process.kill()
-    if kafka_producer_process.poll() is None:
-        kafka_producer_process.kill()
-
+    # Remove process termination code
     kafka_thread.join(timeout=5)
     grpc_thread.join(timeout=5)
     http_thread.join(timeout=5)
 
     print("Shutdown complete.")
-    os._exit(
-        0
-    )  # Forcefully exit the process to ensure the terminal returns to a usable state
+    os._exit(0)
 
 
 # Use the correct MongoDB service name
@@ -180,52 +139,41 @@ MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-service:27017
 
 
 def main(port):
-    global PORT, collection, KAFKA_PROD_PORT, kafka_consumer_process, kafka_producer_process, kafka_thread, grpc_thread, http_thread
+    global PORT, collection, KAFKA_PROD_PORT, kafka_thread, grpc_thread, http_thread
     PORT = port
     HTTP_PORT = port + 1
     KAFKA_CON_PORT = port + 2
     KAFKA_PROD_PORT = port + 3
 
-    # Dynamically name the database based on the port
     client = MongoClient(MONGO_URL)
     db_name = f"SAND{port}"
     db = client[db_name]
     collection = db["users"]
     collection.drop()
 
-    # Start the Kafka consumer service
-    kafka_consumer_process = start_kafka_consumer_service(KAFKA_CON_PORT)
-
-    # Start the Kafka producer service for this node
-    kafka_producer_process = start_kafka_producer_service(KAFKA_PROD_PORT)
-
-    # Add a delay to give the Kafka services time to start
-    time.sleep(3)
-
-    # Register signal handlers for SIGINT and SIGTERM
-    signal.signal(signal.SIGINT, shutdown_gracefully)
-    signal.signal(signal.SIGTERM, shutdown_gracefully)
+    test_server_connection()
 
     print("Initializing lookup table")
-
-    # Initialize the lookup table
     init_lookup_table(KAFKA_CON_PORT, LOOKUP_TABLE_TOPIC)
+    print("Lookup table initialized")
 
-    # Start the Kafka listener thread
+    time.sleep(5)
+
     kafka_thread = threading.Thread(
         target=listen_for_new_messages, args=(KAFKA_CON_PORT, LOOKUP_UPDATES_TOPIC)
     )
     kafka_thread.start()
+    print("Started Kafka listener thread")
 
-    # Start the gRPC server thread
     grpc_thread = threading.Thread(
         target=grpc_server_SAND.serve, args=(collection, PORT)
     )
     grpc_thread.start()
+    print("Started gRPC server thread")
 
-    # Start the HTTP server thread
     http_thread = threading.Thread(target=start_http_server, args=(HTTP_PORT,))
     http_thread.start()
+    print("Started HTTP server thread")
 
     send_message(
         NODE_UPDATES,
@@ -233,9 +181,8 @@ def main(port):
         KAFKA_PROD_PORT,
     )
 
-    print("Lookuptable initialized: ", get_lookup_table())
+    print("Lookuptable: ", get_lookup_table())
 
-    # Keep the main thread running
     try:
         while True:
             time.sleep(1)

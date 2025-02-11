@@ -11,27 +11,37 @@ DEBUG = False
 
 def get_data(db, name):
     """Returns Feature at given location or None."""
-    for item in db:
-        # print(item + " " + name)
-        if item == name.name:
-            if DEBUG:
-                print("Found item")
-            return data_pb2.RequestReply(data=db[item])
+    if DEBUG:
+        print(f"Searching for name: {name.name}")
+        print(f"Database contents: {db}")
 
+    if name.name in db:
+        if DEBUG:
+            print(f"Found item: {db[name.name]}")
+        return data_pb2.RequestReply(data=db[name.name])
+
+    if DEBUG:
+        print(f"Item not found: {name.name}")
     return None
 
 
 class RequestServicer(data_pb2_grpc.RequestServiceServicer):
     def __init__(self):
-
+        if DEBUG:
+            print("Initializing RequestServicer")
         self.db = grpc_main_server_db.mongo_read_database()
+        if DEBUG:
+            print(f"Loaded database: {self.db}")
 
     def RequestData(self, request, context):
+        if DEBUG:
+            print(f"Received request for: {request.name}")
         feature = get_data(self.db, request)
         if feature is None:
+            if DEBUG:
+                print("No data found, returning empty reply")
             return data_pb2.RequestReply(data="")
-        else:
-            return feature
+        return feature
 
 
 def serve():

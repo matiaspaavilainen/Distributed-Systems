@@ -23,6 +23,8 @@ class ConsumerService(consumer_pb2_grpc.ConsumerServicer):
         return self.consumers[topic]
 
     def GetLatestMessage(self, request, context):
+        print("GetLatestMessage called")
+        print(f"Request received: {request}")
         topic = request.topic
         consumer = self.get_consumer(topic)
         latest_message = None
@@ -56,9 +58,9 @@ class ConsumerService(consumer_pb2_grpc.ConsumerServicer):
 def serve(port):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     consumer_pb2_grpc.add_ConsumerServicer_to_server(ConsumerService(), server)
-    server.add_insecure_port(f"[::]:{port}")
+    server.add_insecure_port(f"localhost:{port}")
     server.start()
-    print(f"Started service on port: {port}")
+    print(f"Started consumer service on port: {port}")
     server.wait_for_termination()
 
 

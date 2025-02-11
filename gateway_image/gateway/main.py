@@ -14,7 +14,7 @@ from fastapi.responses import RedirectResponse
 sys.path.append(os.path.join(os.path.dirname(__file__), "../kafka_messaging/consumer"))
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from kafka_messaging.consumer import consumer_pb2, consumer_pb2_grpc
+from kafka_image.consumer import consumer_pb2, consumer_pb2_grpc
 
 # Constants
 CONSUMER_PORT = 40003

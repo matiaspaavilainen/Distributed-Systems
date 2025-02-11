@@ -46,10 +46,15 @@ def read_database():
 
 def mongo_read_database():
     items = {}
-
-    for item in collection.find():
-
-        items[item["name"]] = item["email"]
     if DEBUG:
-        print(items)
+        print("Querying MongoDB...")
+
+    cursor = collection.find()
+    for item in cursor:
+        if DEBUG:
+            print(f"Found item: {item}")
+        items[item["name"]] = item["email"]
+
+    if DEBUG:
+        print(f"Final items dict: {items}")
     return items
