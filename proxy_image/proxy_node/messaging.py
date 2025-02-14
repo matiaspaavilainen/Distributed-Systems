@@ -1,11 +1,6 @@
 import grpc
 import json
-import os
-import sys
 import threading
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "../kafka_messaging/consumer"))
-sys.path.append(os.path.join(os.path.dirname(__file__), "../kafka_messaging/producer"))
 
 from kafka_messaging.consumer import consumer_pb2, consumer_pb2_grpc
 from kafka_messaging.producer import producer_pb2, producer_pb2_grpc

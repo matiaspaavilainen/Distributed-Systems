@@ -1,5 +1,6 @@
 import sys
 import json
+import time
 import grpc
 from concurrent import futures
 from kafka import KafkaConsumer
@@ -8,8 +9,9 @@ import consumer_pb2_grpc
 
 
 class ConsumerService(consumer_pb2_grpc.ConsumerServicer):
-    def __init__(self):
+    def __init__(self, stop_event):
         self.consumers = {}
+        self.stop_event = stop_event
 
     def get_consumer(self, topic):
         if topic not in self.consumers:
@@ -49,19 +51,29 @@ class ConsumerService(consumer_pb2_grpc.ConsumerServicer):
     def ListenForNewMessages(self, request, context):
         topic = request.topic
         consumer = self.get_consumer(topic)
-        for message in consumer:
-            yield consumer_pb2.ListenForNewMessagesResponse(
-                data=json.dumps(message.value)
-            )
+        while not self.stop_event.is_set():
+            messages = consumer.poll(timeout_ms=1000)
+            for tp, msgs in messages.items():
+                for message in msgs:
+                    yield consumer_pb2.ListenForNewMessagesResponse(
+                        data=json.dumps(message.value)
+                    )
 
 
-def serve(port):
+def serve(port, stop_event):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    consumer_pb2_grpc.add_ConsumerServicer_to_server(ConsumerService(), server)
+    consumer_pb2_grpc.add_ConsumerServicer_to_server(
+        ConsumerService(stop_event), server
+    )
     server.add_insecure_port(f"localhost:{port}")
     server.start()
     print(f"Started consumer service on port: {port}")
-    server.wait_for_termination()
+
+    try:
+        while not stop_event.is_set():
+            time.sleep(1)
+    finally:
+        server.stop(0)
 
 
 if __name__ == "__main__":

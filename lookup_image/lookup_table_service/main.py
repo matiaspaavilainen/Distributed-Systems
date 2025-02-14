@@ -1,14 +1,10 @@
-import sys
 import os
 import threading
 import time
+import signal
 import json
 import grpc
 from pymongo import MongoClient
-
-# Add paths
-sys.path.append(os.path.join(os.path.dirname(__file__), "../kafka_messaging/consumer"))
-sys.path.append(os.path.join(os.path.dirname(__file__), "../kafka_messaging/producer"))
 
 from kafka_messaging.consumer import consumer_pb2, consumer_pb2_grpc
 from kafka_messaging.producer import producer_pb2, producer_pb2_grpc
@@ -19,7 +15,7 @@ PRODUCER_PORT = 30003
 NODE_UPDATES_TOPIC = "node-updates"
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
 LOOKUP_TABLE_TOPIC = "lookup-table"
-DEBUG = False
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-service:27017")
 
 # Global variables
 stop_event = threading.Event()
@@ -100,28 +96,31 @@ def process_updates():
 
 
 def shutdown_gracefully(*args):
+    print("Received termination signal, shutting down gracefully...")
     stop_event.set()
-    if process_thread.is_alive():
+    if process_thread and process_thread.is_alive():
         process_thread.join(timeout=5)
+    print("Shutdown complete")
     os._exit(0)
-
-
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-service:27017")
 
 
 def main():
     global collection, process_thread
+
+    # Register signal handler for Kubernetes pod termination
+    signal.signal(signal.SIGTERM, shutdown_gracefully)
+
     client = MongoClient(MONGO_URL)
     db = client["LOOKUP"]
     collection = db["lookup"]
     collection.drop()
     collection.create_index("address", unique=True)
 
-    print("Starting thread")
     process_thread = threading.Thread(target=process_updates)
     process_thread.daemon = True
     process_thread.start()
-    print("Succesfully started listener")
+
+    print("Started service succesfully")
 
     try:
         while True:
@@ -130,8 +129,6 @@ def main():
                 process_thread.daemon = True
                 process_thread.start()
             time.sleep(5)
-    except KeyboardInterrupt:
-        shutdown_gracefully()
     except Exception as e:
         print(f"Error in main: {e}")
         shutdown_gracefully()

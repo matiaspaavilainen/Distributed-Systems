@@ -4,9 +4,31 @@
 
 ### How to use
 
-First start the main server in the directory `/main_server` by running `grpc_main_server_SAND.py`. Then, start the lookup table service from the ROOT directory by running `python lookup_table_service/main.py`. Then, start a node from the ROOT directory with the command `python proxy_node/main.py PORT`. Additional nodes can be started with the same command in another terminal window, and with a port at least 5 larger than the previous one. So if the first node is started with port 50000, the next should be 50005, easier to do increments of 10. Static ports are 40000, 40001, 40002, 40003, 40404. HTTP requests can be sent to the nodes using for example PostMan, to `localhost:PORT+1/resource/{name}`. This will return the databse entry if the person exists. Also needs mongodb running on the computer in the default port, and a Kafka broker, also on it's default port. Three kafka topics named lookup-table, lookup-updates and node-updates.
+DOCKER from main branch
 
-using:
+1. "run docker-compose up --build" in the directory where compose.yaml is
+2. wait for the thigns to start, nodes, gateway and lookup should wait for kafka to start
+3. If starting takes long, 30 seconds or something do 4-7
+4. In a new terminal window, run: "docker exec --workdir /opt/kafka/bin/ -it broker sh"
+5. run: "./kafka-topics.sh --bootstrap-server localhost:9094 --create --topic node-updates"
+6. run: "./kafka-topics.sh --bootstrap-server localhost:9094 --create --topic lookup-updates"
+7. run: "./kafka-topics.sh --bootstrap-server localhost:9094 --create --topic lookup-table"
+8. Should now work, in browser or postman: "localhost:40404/query/John%20Doe"
 
-<https://hub.docker.com/r/apache/kafka>
-<https://hub.docker.com/_/mongo>
+KUBERNETES
+
+1. start minikube
+2. Another terminal, go to root dir of the git project
+3. follow this: <https://strimzi.io/quickstarts/> , this is the last command: kubectl wait kafka/my-cluster --for=condition=Ready --timeout=300s -n kafka
+4. kubectl apply -f deployments/zookeeper.yaml, wait for this to start before next step
+5. kubectl apply -f deployments/kafka-broker.yaml
+6. kubectl apply -f deployments/server-deployment.yaml
+7. kubectl apply -f deployments/mongodb-configmap.yaml
+8. kubectl apply -f deployments/mongodb-deployment.yaml
+9. wait for both kafkas to start
+10. kubectl apply -f deployments/lookup.yaml
+11. kubectl apply -f node_manager/templates/rbac.yaml
+12. kubectl apply -f deployments/node-manager.yaml, starts 2 nodes
+13. To send http request to node, new terminal. run "minikube service proxy-node-{id}-external"
+14. This opens browser, add "/resource/Jane Doe" after the port.
+15. Should return the data

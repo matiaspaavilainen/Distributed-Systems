@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: node-manager
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: node-manager
+    template:
+        metadata:
+            labels:
+                app: node-manager
+        spec:
+            serviceAccountName: node-manager-account
+            containers:
+                - name: node-manager
+                  image: matiaspaavilainen/distributed-systems:node_manager
+                  imagePullPolicy: Always

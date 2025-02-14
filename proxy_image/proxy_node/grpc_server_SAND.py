@@ -1,12 +1,8 @@
 from concurrent import futures
 import grpc
-import os
-import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../main_server"))
-
-from main_server import data_pb2
-from main_server import data_pb2_grpc
+from grpc_server import data_pb2
+from grpc_server import data_pb2_grpc
 
 DEBUG = True
 

@@ -1,5 +1,6 @@
 import sys
 import json
+import time
 import grpc
 from concurrent import futures
 from kafka import KafkaProducer
@@ -8,11 +9,12 @@ import producer_pb2_grpc
 
 
 class ProducerService(producer_pb2_grpc.ProducerServicer):
-    def __init__(self):
+    def __init__(self, stop_event):
         self.producer = KafkaProducer(
             bootstrap_servers=["broker:9092"],
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),
         )
+        self.stop_event = stop_event
 
     def SendMessage(self, request, context):
         data = json.loads(request.data)
@@ -29,13 +31,20 @@ class ProducerService(producer_pb2_grpc.ProducerServicer):
             return producer_pb2.SendMessageResponse(status=f"error: {excp}")
 
 
-def serve(port):
+def serve(port, stop_event):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    producer_pb2_grpc.add_ProducerServicer_to_server(ProducerService(), server)
+    producer_pb2_grpc.add_ProducerServicer_to_server(
+        ProducerService(stop_event), server
+    )
     server.add_insecure_port(f"localhost:{port}")
     server.start()
     print(f"Started producer service on port: {port}")
-    server.wait_for_termination()
+
+    try:
+        while not stop_event.is_set():
+            time.sleep(1)
+    finally:
+        server.stop(0)
 
 
 if __name__ == "__main__":

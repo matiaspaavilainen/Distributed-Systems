@@ -45,4 +45,4 @@ USER appuser
 COPY . .
 
 # Run python with PORT from environment
-CMD python proxy_node/main.py ${PORT}
+CMD ["python", "proxy_node/main.py"]

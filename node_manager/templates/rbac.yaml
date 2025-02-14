@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: node-manager-account
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+    name: node-manager-role
+rules:
+    - apiGroups: ["apps"]
+      resources: ["deployments"]
+      verbs: ["create", "delete", "get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["services"]
+      verbs: ["create", "delete", "get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+    name: node-manager-role-binding
+subjects:
+    - kind: ServiceAccount
+      name: node-manager-account
+      namespace: default
+roleRef:
+    kind: Role
+    name: node-manager-role
+    apiGroup: rbac.authorization.k8s.io

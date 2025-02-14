@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: proxy-node-{id}
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: proxy-node
+            instance: "{id}"
+    template:
+        metadata:
+            labels:
+                app: proxy-node
+                instance: "{id}"
+            name: proxy-node-{id}
+        spec:
+            containers:
+                - name: proxy-node
+                  image: matiaspaavilainen/distributed-systems:proxy_node
+                  imagePullPolicy: Always # REMOVE WHEN NO NEED TO CHANGE CODE
+                  ports:
+                      - containerPort: "{http_port}"
+                      - containerPort: "{grpc_port}"
+                  env:
+                      - name: POD_NAME
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.name
+                      - name: PORT
+                        value: "{base_port}"
+                      - name: PYTHONPATH
+                        value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_server"
+                - name: kafka-services
+                  image: matiaspaavilainen/distributed-systems:kafka_services
+                  imagePullPolicy: Always
+                  env:
+                      - name: PORT_BASE
+                        value: "{base_port}"
+                      - name: PYTHONPATH
+                        value: "/app:/app/consumer:/app/producer"
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: proxy-node-{id}-internal
+spec:
+    type: ClusterIP
+    selector:
+        app: proxy-node
+        instance: "{id}"
+    ports:
+        - port: "{grpc_port}"
+          targetPort: "{grpc_port}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: proxy-node-{id}-external
+spec:
+    type: NodePort
+    selector:
+        app: proxy-node
+        instance: "{id}"
+    ports:
+        - port: "{http_port}"
+          targetPort: "{http_port}"
+          nodePort: "{node_http_port}"

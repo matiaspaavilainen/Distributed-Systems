@@ -1,16 +1,12 @@
-import sys
 import os
 import threading
 import time
-import socket
+import signal
 import grpc
 from pymongo import MongoClient
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 import uvicorn
-
-# Add paths
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from messaging import (
     init_lookup_table,
@@ -26,6 +22,7 @@ import grpc_server_SAND
 # Constants
 DEBUG = True
 MAIN_SERVER_ADDRESS = "server-service:40002"
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-service:27017")
 
 # Topics
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
@@ -54,6 +51,22 @@ def search_local_db(query):
     return None
 
 
+def get_node_address():
+    """Get the node's internal service address for gRPC"""
+    pod_name = os.getenv("POD_NAME")
+    if not pod_name:
+        raise RuntimeError("POD_NAME environment variable not set")
+
+    # Extract the numeric ID from the deployment name
+    # Format will be like 'proxy-node-0-xyz' or 'proxy-node-1-xyz'
+    try:
+        node_id = pod_name.split("-")[2]  # Get the numeric ID
+    except IndexError:
+        raise RuntimeError(f"Unexpected pod name format: {pod_name}")
+
+    return f"proxy-node-{node_id}-internal:{PORT}"
+
+
 def find_item_from_any_db(query):
     item = search_local_db(query)
     if item is not None:
@@ -72,8 +85,7 @@ def find_item_from_any_db(query):
                 print("Added " + str(item) + " to the local database")
                 # Update the lookup table on the local node
                 update_lookup_table(
-                    # Construct a key with the hostname and port
-                    {f"{socket.gethostname()}:{PORT}": [query]},
+                    {get_node_address(): [query]},  # Use get_node_address() here
                     message_type="A",
                     received_from_message=False,
                     kafka_producer_port=KAFKA_PROD_PORT,
@@ -89,7 +101,7 @@ def find_item_from_any_db(query):
         print("Added " + str(item) + " to the local database")
         # Update the lookup table on the local node only
         update_lookup_table(
-            {f"{socket.gethostname()}:{PORT}": [query]},
+            {get_node_address(): [query]},  # Use get_node_address() here too
             "A",
             received_from_message=False,
             kafka_producer_port=KAFKA_PROD_PORT,
@@ -116,26 +128,22 @@ def start_http_server(port):
 
 
 def shutdown_gracefully(*args):
-    print("Shutting down gracefully...")
+    print("Received termination signal, shutting down gracefully...")
     send_message(
         NODE_UPDATES,
-        {"data": [f"{socket.gethostname()}:{PORT}"], "type": "D"},
+        {"data": [get_node_address()], "type": "D"},
         KAFKA_PROD_PORT,
     )
-    time.sleep(2)
+    time.sleep(2)  # Give time for message to be sent
     stop_event.set()
 
-    # Remove process termination code
+    # Wait for threads to finish
     kafka_thread.join(timeout=5)
     grpc_thread.join(timeout=5)
     http_thread.join(timeout=5)
 
     print("Shutdown complete.")
     os._exit(0)
-
-
-# Use the correct MongoDB service name
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-service:27017")
 
 
 def main(port):
@@ -145,19 +153,23 @@ def main(port):
     KAFKA_CON_PORT = port + 2
     KAFKA_PROD_PORT = port + 3
 
+    # Register signal handler for Kubernetes pod termination
+    signal.signal(signal.SIGTERM, shutdown_gracefully)
+
     client = MongoClient(MONGO_URL)
     db_name = f"SAND{port}"
     db = client[db_name]
     collection = db["users"]
     collection.drop()
 
-    test_server_connection()
+    if DEBUG:
+        test_server_connection()
+
+    # need to wait for kafka to have started
+    time.sleep(5)
 
     print("Initializing lookup table")
     init_lookup_table(KAFKA_CON_PORT, LOOKUP_TABLE_TOPIC)
-    print("Lookup table initialized")
-
-    time.sleep(5)
 
     kafka_thread = threading.Thread(
         target=listen_for_new_messages, args=(KAFKA_CON_PORT, LOOKUP_UPDATES_TOPIC)
@@ -177,7 +189,7 @@ def main(port):
 
     send_message(
         NODE_UPDATES,
-        {"data": [f"{socket.gethostname()}:{PORT}"], "type": "I"},
+        {"data": [get_node_address()], "type": "I"},
         KAFKA_PROD_PORT,
     )
 
@@ -186,16 +198,11 @@ def main(port):
     try:
         while True:
             time.sleep(1)
-    except KeyboardInterrupt:
-        shutdown_gracefully()
     except Exception as e:
         print(f"Error in main: {e}")
         shutdown_gracefully()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python main.py <port>")
-        sys.exit(1)
-    port = int(sys.argv[1])
+    port = int(os.getenv("PORT"))
     main(port)
