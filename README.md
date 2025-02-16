@@ -19,7 +19,7 @@ KUBERNETES
 
 1. start minikube
 2. Another terminal, go to root dir of the git project
-3. follow this: <https://strimzi.io/quickstarts/> , this is the last command: kubectl wait kafka/my-cluster --for=condition=Ready --timeout=300s -n kafka
+3. follow this: <https://strimzi.io/quickstarts/> , this is the last command that is needed: kubectl wait kafka/my-cluster --for=condition=Ready --timeout=300s -n kafka
 4. kubectl apply -f deployments/zookeeper.yaml, wait for this to start before next step
 5. kubectl apply -f deployments/kafka-broker.yaml
 6. kubectl apply -f deployments/server-deployment.yaml
