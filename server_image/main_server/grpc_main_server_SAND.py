@@ -11,14 +11,25 @@ DEBUG = False
 
 def get_data(db, name):
     """Returns Feature at given location or None."""
-    if DEBUG:
-        print(f"Searching for name: {name.name}")
-        print(f"Database contents: {db}")
-
     if name.name in db:
+        item = db[name.name]
         if DEBUG:
-            print(f"Found item: {db[name.name]}")
-        return data_pb2.RequestReply(data=db[name.name])
+            print(f"Found item: {item}")
+        return data_pb2.RequestReply(
+            name=item["name"],
+            email=item["email"],
+            age=item["age"],
+            address=data_pb2.Address(
+                street=item["address"]["street"],
+                city=item["address"]["city"],
+                state=item["address"]["state"],
+                zipCode=item["address"]["zipCode"],
+            ),
+            created_at=item["created_at"].isoformat(),
+            orders=item["orders"],
+            status=item["status"],
+            premium=item["premium"],
+        )
 
     if DEBUG:
         print(f"Item not found: {name.name}")

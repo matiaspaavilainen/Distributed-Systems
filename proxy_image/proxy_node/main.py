@@ -1,3 +1,4 @@
+import datetime
 import os
 import threading
 import time
@@ -46,9 +47,65 @@ async def get_resource(query: str):
 
 def search_local_db(query):
     item = collection.find_one({"name": query})
-    if item is not None:
-        return item["email"]
+    return item
+
+
+def process_item_response(item, query):
+    """Helper function to process item response and update local storage"""
+    if item:
+        # Create user_data without _id field
+        user_data = {
+            "name": query,
+            "email": item.email,
+            "age": item.age,
+            "address": {
+                "street": item.address.street,
+                "city": item.address.city,
+                "state": item.address.state,
+                "zipCode": item.address.zipCode,
+            },
+            "created_at": item.created_at,
+            "orders": item.orders,
+            "status": item.status,
+            "premium": item.premium,
+        }
+        # Insert into MongoDB (will create its own _id)
+        collection.insert_one(
+            user_data.copy()
+        )  # Use copy to avoid MongoDB adding _id to our response
+        print("Added " + str(user_data.get("name")) + " to the local database")
+        update_lookup_table(
+            {get_node_address(): [query]},
+            message_type="A",
+            received_from_message=False,
+            kafka_producer_port=KAFKA_PROD_PORT,
+            topic=NODE_UPDATES,
+        )
+        return user_data  # Return clean data without _id
     return None
+
+
+def find_item_from_any_db(query):
+    item = search_local_db(query)
+    if item is not None:
+        if DEBUG:
+            print("Found item from the local database: " + str(item))
+        return process_item_response(item, query)
+
+    lookup_table = get_lookup_table()
+    for address, values in lookup_table.items():
+        if query in values:
+            if DEBUG:
+                print(f"Item found in lookup table at {address}")
+            item = grpc_client_SAND.run(query, address)
+            result = process_item_response(item, query)
+            if result:
+                return result
+
+    if DEBUG:
+        print("Item not found in lookup table, sending request to the main server")
+    item = grpc_client_SAND.run(query, MAIN_SERVER_ADDRESS)
+    return process_item_response(item, query)
 
 
 def get_node_address():
@@ -65,51 +122,6 @@ def get_node_address():
         raise RuntimeError(f"Unexpected pod name format: {pod_name}")
 
     return f"proxy-node-{node_id}-internal:{PORT}"
-
-
-def find_item_from_any_db(query):
-    item = search_local_db(query)
-    if item is not None:
-        if DEBUG:
-            print("Found item from the local database: " + str(item))
-        return {"name": query, "email": item}
-
-    lookup_table = get_lookup_table()
-    for address, values in lookup_table.items():
-        if query in values:
-            if DEBUG:
-                print(f"Item found in lookup table at {address}")
-            item = grpc_client_SAND.run(query, address)
-            if item and item.data:
-                collection.insert_one({"name": query, "email": item.data})
-                print("Added " + str(item) + " to the local database")
-                # Update the lookup table on the local node
-                update_lookup_table(
-                    {get_node_address(): [query]},  # Use get_node_address() here
-                    message_type="A",
-                    received_from_message=False,
-                    kafka_producer_port=KAFKA_PROD_PORT,
-                    topic=NODE_UPDATES,
-                )
-                return {"name": query, "email": item.data}
-
-    if DEBUG:
-        print("Item not found in lookup table, sending request to the main server")
-    item = grpc_client_SAND.run(query, MAIN_SERVER_ADDRESS)
-    if item and item.data:
-        collection.insert_one({"name": query, "email": item.data})
-        print("Added " + str(item) + " to the local database")
-        # Update the lookup table on the local node only
-        update_lookup_table(
-            {get_node_address(): [query]},  # Use get_node_address() here too
-            "A",
-            received_from_message=False,
-            kafka_producer_port=KAFKA_PROD_PORT,
-            topic=NODE_UPDATES,
-        )
-        return {"name": query, "email": item.data}
-
-    return None
 
 
 def test_server_connection():

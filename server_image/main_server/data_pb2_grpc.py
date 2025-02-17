@@ -35,8 +35,8 @@ class RequestServiceStub(object):
             channel: A grpc.Channel.
         """
         self.RequestData = channel.unary_unary(
-                '/SAND.RequestService/RequestData',
-                request_serializer=data__pb2.Request.SerializeToString,
+                '/RequestService/RequestData',
+                request_serializer=data__pb2.RequestMessage.SerializeToString,
                 response_deserializer=data__pb2.RequestReply.FromString,
                 _registered_method=True)
 
@@ -55,14 +55,14 @@ def add_RequestServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'RequestData': grpc.unary_unary_rpc_method_handler(
                     servicer.RequestData,
-                    request_deserializer=data__pb2.Request.FromString,
+                    request_deserializer=data__pb2.RequestMessage.FromString,
                     response_serializer=data__pb2.RequestReply.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'SAND.RequestService', rpc_method_handlers)
+            'RequestService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('SAND.RequestService', rpc_method_handlers)
+    server.add_registered_method_handlers('RequestService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
@@ -83,8 +83,8 @@ class RequestService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/SAND.RequestService/RequestData',
-            data__pb2.Request.SerializeToString,
+            '/RequestService/RequestData',
+            data__pb2.RequestMessage.SerializeToString,
             data__pb2.RequestReply.FromString,
             options,
             channel_credentials,

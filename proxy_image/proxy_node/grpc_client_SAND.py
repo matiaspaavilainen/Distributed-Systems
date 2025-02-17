@@ -4,12 +4,12 @@ import time
 from grpc_server import data_pb2
 from grpc_server import data_pb2_grpc
 
-DEBUG = True
+DEBUG = False
 
 
 def make_request(stub, name):
     try:
-        request = data_pb2.Request(name=name)
+        request = data_pb2.RequestMessage(name=name)
         if DEBUG:
             print(f"Sending request: {request}")
         reply = stub.RequestData(request)

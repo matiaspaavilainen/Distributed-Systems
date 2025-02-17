@@ -53,7 +53,21 @@ def mongo_read_database():
     for item in cursor:
         if DEBUG:
             print(f"Found item: {item}")
-        items[item["name"]] = item["email"]
+        items[item["name"]] = {
+            "name": item["name"],
+            "email": item["email"],
+            "age": item["age"],
+            "address": {
+                "street": item["address"]["street"],
+                "city": item["address"]["city"],
+                "state": item["address"]["state"],
+                "zipCode": item["address"]["zipCode"],
+            },
+            "created_at": item["created_at"],
+            "orders": item["orders"],
+            "status": item["status"],
+            "premium": item["premium"],
+        }
 
     if DEBUG:
         print(f"Final items dict: {items}")

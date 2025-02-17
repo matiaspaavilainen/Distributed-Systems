@@ -24,17 +24,19 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ndata.proto\x12\x04SAND\"\x17\n\x07Request\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1c\n\x0cRequestReply\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t2D\n\x0eRequestService\x12\x32\n\x0bRequestData\x12\r.SAND.Request\x1a\x12.SAND.RequestReply\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ndata.proto\"G\n\x07\x41\x64\x64ress\x12\x0e\n\x06street\x18\x01 \x01(\t\x12\x0c\n\x04\x63ity\x18\x02 \x01(\t\x12\r\n\x05state\x18\x03 \x01(\t\x12\x0f\n\x07zipCode\x18\x04 \x01(\x05\"\x1e\n\x0eRequestMessage\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x98\x01\n\x0cRequestReply\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x65mail\x18\x02 \x01(\t\x12\x0b\n\x03\x61ge\x18\x03 \x01(\x05\x12\x19\n\x07\x61\x64\x64ress\x18\x04 \x01(\x0b\x32\x08.Address\x12\x12\n\ncreated_at\x18\x05 \x01(\t\x12\x0e\n\x06orders\x18\x06 \x01(\x05\x12\x0e\n\x06status\x18\x07 \x01(\t\x12\x0f\n\x07premium\x18\x08 \x01(\x08\x32\x41\n\x0eRequestService\x12/\n\x0bRequestData\x12\x0f.RequestMessage\x1a\r.RequestReply\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'data_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_REQUEST']._serialized_start=20
-  _globals['_REQUEST']._serialized_end=43
-  _globals['_REQUESTREPLY']._serialized_start=45
-  _globals['_REQUESTREPLY']._serialized_end=73
-  _globals['_REQUESTSERVICE']._serialized_start=75
-  _globals['_REQUESTSERVICE']._serialized_end=143
+  _globals['_ADDRESS']._serialized_start=14
+  _globals['_ADDRESS']._serialized_end=85
+  _globals['_REQUESTMESSAGE']._serialized_start=87
+  _globals['_REQUESTMESSAGE']._serialized_end=117
+  _globals['_REQUESTREPLY']._serialized_start=120
+  _globals['_REQUESTREPLY']._serialized_end=272
+  _globals['_REQUESTSERVICE']._serialized_start=274
+  _globals['_REQUESTSERVICE']._serialized_end=339
 # @@protoc_insertion_point(module_scope)

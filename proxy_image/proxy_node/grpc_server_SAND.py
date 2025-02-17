@@ -13,7 +13,21 @@ def get_data(db, name):
     if item is not None:
         if DEBUG:
             print("Found item")
-        return data_pb2.RequestReply(data=item["email"])
+        return data_pb2.RequestReply(
+            name=item["name"],
+            email=item["email"],
+            age=item["age"],
+            address=data_pb2.Address(
+                street=item["address"]["street"],
+                city=item["address"]["city"],
+                state=item["address"]["state"],
+                zipCode=item["address"]["zipCode"],
+            ),
+            created_at=item["created_at"],
+            orders=item["orders"],
+            status=item["status"],
+            premium=item["premium"],
+        )
     return None
 
 

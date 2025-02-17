@@ -32,3 +32,5 @@ KUBERNETES
 13. To send http request to node, new terminal. run "minikube service proxy-node-{id}-external"
 14. This opens browser, add "/resource/Jane Doe" after the port.
 15. Should return the data
+
+To delete the nodes, simply delete the node-manager deployment. This will delete all the services and deployments related to the nodes.

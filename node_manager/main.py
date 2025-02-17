@@ -84,7 +84,7 @@ def delete_node(k8s_apps, k8s_core, node_id):
             name=f"proxy-node-{node_id}-internal", namespace="default"
         )
         k8s_core.delete_namespaced_service(
-            name=f"proxy-node-{node_id}", namespace="default"
+            name=f"proxy-node-{node_id}-external", namespace="default"
         )
     except Exception as e:
         print(f"Error deleting node {node_id}: {e}")

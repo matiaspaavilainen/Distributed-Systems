@@ -1,14 +1,27 @@
 syntax = "proto3";
-package SAND;
 
-service RequestService {
-    rpc RequestData (Request) returns (RequestReply) {}
+message Address {
+    string street = 1;
+    string city = 2;
+    string state = 3;
+    int32 zipCode = 4;
 }
 
-message Request {
+message RequestMessage {
     string name = 1;
 }
 
 message RequestReply {
-    string data = 1;
+    string name = 1;
+    string email = 2;
+    int32 age = 3;
+    Address address = 4;
+    string created_at = 5;
+    int32 orders = 6;
+    string status = 7;
+    bool premium = 8;
+}
+
+service RequestService {
+    rpc RequestData (RequestMessage) returns (RequestReply) {}
 }
