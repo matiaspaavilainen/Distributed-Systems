@@ -1,4 +1,3 @@
-import sys
 import os
 import threading
 import signal
@@ -18,7 +17,7 @@ def shutdown_gracefully(*args):
     stop_event.set()
 
     # Give time for proxy node to send its deletion message
-    time.sleep(5)
+    time.sleep(3)
 
     if consumer_thread and consumer_thread.is_alive():
         consumer_thread.join(timeout=5)

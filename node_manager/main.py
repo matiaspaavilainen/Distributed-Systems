@@ -12,7 +12,7 @@ def initialize_k8s():
         config.load_incluster_config()
     except config.ConfigException:
         config.load_kube_config()
-    return client.AppsV1Api(), client.CoreV1Api()
+    return client.AppsV1Api(), client.CoreV1Api(), client.NetworkingV1Api()
 
 
 def fill_template(template, node_id, ports):
@@ -29,12 +29,12 @@ def fill_template(template, node_id, ports):
                         obj[k] = v.replace("{id}", str(node_id))
                     for port_key, port_value in ports.items():
                         if "{" + port_key + "}" in v:
-                            # Convert to int for containerPort fields
+                            # Convert to int for port-related fields
                             if (
                                 k == "containerPort"
                                 or k == "port"
                                 or k == "targetPort"
-                                or k == "nodePort"
+                                or k == "number"
                             ):
                                 obj[k] = int(port_value)
                             else:
@@ -47,15 +47,13 @@ def fill_template(template, node_id, ports):
     return filled
 
 
-def create_node(k8s_apps, k8s_core, template, node_id, base_port=50060):
+def create_node(k8s_apps, k8s_core, k8s_networking, template, node_id, base_port=50060):
     """Create a new node with the given ID and port configuration"""
     port_offset = node_id * 10
     ports = {
         "base_port": base_port + port_offset,
         "http_port": base_port + port_offset + 1,
         "grpc_port": base_port + port_offset,
-        "node_http_port": 30060 + node_id * 10 + 1,
-        "node_grpc_port": 30060 + node_id * 10,
     }
 
     print(f"Creating node {node_id} with ports: {ports}")
@@ -70,12 +68,16 @@ def create_node(k8s_apps, k8s_core, template, node_id, base_port=50060):
     external_service = fill_template(template[2], node_id, ports)
     k8s_core.create_namespaced_service(body=external_service, namespace="default")
 
+    # Create Ingress
+    ingress = fill_template(template[3], node_id, ports)
+    k8s_networking.create_namespaced_ingress(body=ingress, namespace="default")
 
-def delete_node(k8s_apps, k8s_core, node_id):
+
+def delete_node(k8s_apps, k8s_core, k8s_networking, node_id):
     """Delete a node and its services"""
     print(f"Deleting node {node_id}...")
     try:
-        # Delete deployment (this will send SIGTERM to the pod)
+        # Delete deployment
         k8s_apps.delete_namespaced_deployment(
             name=f"proxy-node-{node_id}", namespace="default"
         )
@@ -85,6 +87,10 @@ def delete_node(k8s_apps, k8s_core, node_id):
         )
         k8s_core.delete_namespaced_service(
             name=f"proxy-node-{node_id}-external", namespace="default"
+        )
+        # Delete Ingress
+        k8s_networking.delete_namespaced_ingress(
+            name=f"proxy-node-{node_id}-ingress", namespace="default"
         )
     except Exception as e:
         print(f"Error deleting node {node_id}: {e}")
@@ -96,7 +102,7 @@ def main():
         raise FileNotFoundError(f"Template file not found: {template_path}")
 
     stop_event = threading.Event()
-    k8s_apps, k8s_core = initialize_k8s()
+    k8s_apps, k8s_core, k8s_networking = initialize_k8s()
     NUM_NODES = 2
 
     with open(template_path, "r") as f:
@@ -107,21 +113,24 @@ def main():
         stop_event.set()
         # Clean up nodes
         for i in range(NUM_NODES):
-            delete_node(k8s_apps, k8s_core, i)
+            delete_node(k8s_apps, k8s_core, k8s_networking, i)
         print("All nodes deleted")
 
     signal.signal(signal.SIGTERM, shutdown_gracefully)
+
+    time.sleep(2)
+
     print(f"Starting node manager, creating {NUM_NODES} nodes...")
 
     for i in range(NUM_NODES):
-        create_node(k8s_apps, k8s_core, template, i)
+        create_node(k8s_apps, k8s_core, k8s_networking, template, i)
         print(f"Created node {i}")
 
     print("All nodes created. Node ports:")
     for i in range(NUM_NODES):
         print(f"Node {i}:")
-        print(f"  HTTP: {30060 + i * 10 + 1}")
-        print(f"  gRPC: {30060 + i * 10}")
+        print(f"  HTTP: {50060 + i * 10 + 1}")
+        print(f"  gRPC: {50060 + i * 10}")
 
     try:
         while not stop_event.is_set():

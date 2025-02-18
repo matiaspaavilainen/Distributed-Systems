@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package consumer;
+
+service Consumer {
+    rpc GetLatestMessage (GetLatestMessageRequest) returns (GetLatestMessageResponse);
+    rpc ListenForNewMessages (ListenForNewMessagesRequest) returns (stream ListenForNewMessagesResponse);
+}
+
+message GetLatestMessageRequest {
+    string topic = 1;
+}
+
+message GetLatestMessageResponse {
+    string data = 1;
+}
+
+message ListenForNewMessagesRequest {
+    string topic = 1;
+}
+
+message ListenForNewMessagesResponse {
+    string data = 1;
+}

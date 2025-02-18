@@ -9,7 +9,7 @@ from kafka_messaging.producer import producer_pb2, producer_pb2_grpc
 lookup_table = {}
 lookup_table_lock = threading.Lock()
 
-DEBUG = True
+DEBUG = False
 
 
 def init_lookup_table(port, topic):

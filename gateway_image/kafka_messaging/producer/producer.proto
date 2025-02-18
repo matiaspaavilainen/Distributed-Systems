@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package producer;
+
+service Producer {
+    rpc SendMessage (SendMessageRequest) returns (SendMessageResponse);
+}
+
+message SendMessageRequest {
+    string topic = 1;
+    string data = 2;
+}
+
+message SendMessageResponse {
+    string status = 1;
+    string topic = 2;
+    int32 partition = 3;
+    int64 offset = 4;
+}

@@ -40,6 +40,7 @@ spec:
                       - name: PYTHONPATH
                         value: "/app:/app/consumer:/app/producer"
 ---
+# Internal service for gRPC
 apiVersion: v1
 kind: Service
 metadata:
@@ -50,19 +51,40 @@ spec:
         app: proxy-node
         instance: "{id}"
     ports:
-        - port: "{grpc_port}"
+        - name: grpc
+          port: "{grpc_port}"
           targetPort: "{grpc_port}"
+
 ---
+# External service for HTTP
 apiVersion: v1
 kind: Service
 metadata:
     name: proxy-node-{id}-external
 spec:
-    type: NodePort
+    type: ClusterIP
     selector:
         app: proxy-node
         instance: "{id}"
     ports:
-        - port: "{http_port}"
+        - name: http
+          port: "{http_port}"
           targetPort: "{http_port}"
-          nodePort: "{node_http_port}"
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    name: proxy-node-{id}-ingress
+    annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /resource/$1 # Changed to capture query part
+spec:
+    rules:
+        - http:
+              paths:
+                  - path: /node-{id}/resource/(.*) # Changed to capture query part
+                    pathType: ImplementationSpecific
+                    backend:
+                        service:
+                            name: proxy-node-{id}-external
+                            port:
+                                number: "{http_port}"
