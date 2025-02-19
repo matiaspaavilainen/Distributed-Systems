@@ -15,6 +15,9 @@ def initialize_k8s():
     return client.AppsV1Api(), client.CoreV1Api(), client.NetworkingV1Api()
 
 
+# USE HPA, WITH PROMETHEUS REQUEST PER SECOND
+
+
 def fill_template(template, node_id, ports):
     """Fill template with node ID and port values"""
     filled = copy.deepcopy(template)

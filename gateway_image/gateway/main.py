@@ -19,6 +19,8 @@ app = FastAPI()
 stop_event = threading.Event()
 updates_thread = None
 
+# LOADBALANCING WITH NGINX REVERSE PROXY OR SOMETHING BETTER
+
 
 class LoadBalancer:
     def __init__(self):
