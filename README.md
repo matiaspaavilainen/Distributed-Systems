@@ -38,3 +38,21 @@ KUBERNETES
 16. Should return the data
 
 To delete the nodes, simply delete the node-manager deployment. This will delete all the services and deployments related to the nodes.
+
+### PROMETHEUS-GRAFANA
+Install the prometheus-grafana stack using this tutorial 
+https://medium.com/@akilblanchard09/monitoring-a-kubernetes-cluster-using-prometheus-and-grafana-8e0f21805ea9
+Create a service 
+1. minikube service grafana-ext --url -n monitoring
+   
+Get the name of the kubernetes pod to port forward it
+
+2. kubectl get pods -n monitoring
+   
+3. kubectl --namespace monitoring port-forward <Name of the grafana pod> 3000
+   
+You can now access the grafana dashboard in
+
+4. http://localhost:3000
+   
+look up the ip address of the prometheus-server and add it as a data source for grafana
