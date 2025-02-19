@@ -16,6 +16,7 @@ def initialize_k8s():
 
 
 # USE HPA, WITH PROMETHEUS REQUEST PER SECOND
+# https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
 
 
 def fill_template(template, node_id, ports):
