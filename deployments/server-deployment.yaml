@@ -33,5 +33,5 @@ spec:
         - protocol: TCP
           port: 40002
           targetPort: 40002
-    type: ClusterIP
-    # ClusterIP makes it only accesible inside the cluster, maybe need to change later
+          nodePort: 40002
+    type: NodePort

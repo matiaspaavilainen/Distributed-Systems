@@ -31,6 +31,10 @@ spec:
                                 fieldPath: metadata.name
                       - name: PORT
                         value: "{base_port}"
+                      - name: MAIN_SERVER_ADDRESS
+                        value: "server-service.default.svc.cluster.local:40002"
+                        # OR for cross-VM access:
+                        # value: "<VM-IP>:40002"
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_server"
                 - name: kafka-services

@@ -72,10 +72,6 @@ def create_node(k8s_apps, k8s_core, k8s_networking, template, node_id, base_port
     external_service = fill_template(template[2], node_id, ports)
     k8s_core.create_namespaced_service(body=external_service, namespace="default")
 
-    # Create Ingress
-    ingress = fill_template(template[3], node_id, ports)
-    k8s_networking.create_namespaced_ingress(body=ingress, namespace="default")
-
 
 def delete_node(k8s_apps, k8s_core, k8s_networking, node_id):
     """Delete a node and its services"""
@@ -92,10 +88,7 @@ def delete_node(k8s_apps, k8s_core, k8s_networking, node_id):
         k8s_core.delete_namespaced_service(
             name=f"proxy-node-{node_id}-external", namespace="default"
         )
-        # Delete Ingress
-        k8s_networking.delete_namespaced_ingress(
-            name=f"proxy-node-{node_id}-ingress", namespace="default"
-        )
+
     except Exception as e:
         print(f"Error deleting node {node_id}: {e}")
 

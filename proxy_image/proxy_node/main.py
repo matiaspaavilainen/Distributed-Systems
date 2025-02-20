@@ -22,7 +22,7 @@ import grpc_server_SAND
 
 # Constants
 DEBUG = True
-MAIN_SERVER_ADDRESS = "server-service:40002"
+MAIN_SERVER_ADDRESS = os.getenv("MAIN_SERVER_ADDRESS", "server-service:40002")
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-service:27017")
 
 # Topics
