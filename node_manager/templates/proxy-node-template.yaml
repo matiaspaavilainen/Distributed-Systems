@@ -34,7 +34,7 @@ spec:
                       - name: MAIN_SERVER_ADDRESS
                         value: "server-service.default.svc.cluster.local:40002"
                         # OR for cross-VM access:
-                        # value: "<VM-IP>:40002"
+                        # value: "<VM-IP>:30002"
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_server"
                 - name: kafka-services

@@ -33,5 +33,5 @@ spec:
         - protocol: TCP
           port: 40002
           targetPort: 40002
-          nodePort: 40002
+          nodePort: 30002
     type: NodePort
