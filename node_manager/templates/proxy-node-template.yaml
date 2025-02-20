@@ -21,8 +21,9 @@ spec:
                   imagePullPolicy: Always # REMOVE WHEN NO NEED TO CHANGE CODE
                   ports:
                       - name: http
-                      - containerPort: "{http_port}"
-                      - containerPort: "{grpc_port}"
+                        containerPort: "{http_port}"
+                      - name: grpc
+                        containerPort: "{grpc_port}"
                   env:
                       - name: POD_NAME
                         valueFrom:

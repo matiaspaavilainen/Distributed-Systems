@@ -55,9 +55,9 @@ def create_node(k8s_apps, k8s_core, k8s_networking, template, node_id, base_port
     """Create a new node with the given ID and port configuration"""
     port_offset = node_id * 10
     ports = {
-        "base_port": base_port + port_offset,
-        "http_port": base_port + port_offset + 1,
-        "grpc_port": base_port + port_offset,
+        "base_port": int(base_port + port_offset),
+        "http_port": int(base_port + port_offset + 1),
+        "grpc_port": int(base_port + port_offset),
     }
 
     print(f"Creating node {node_id} with ports: {ports}")
