@@ -20,6 +20,7 @@ spec:
                   image: matiaspaavilainen/distributed-systems:proxy_node
                   imagePullPolicy: Always # REMOVE WHEN NO NEED TO CHANGE CODE
                   ports:
+                      - name: http
                       - containerPort: "{http_port}"
                       - containerPort: "{grpc_port}"
                   env:
@@ -70,21 +71,3 @@ spec:
         - name: http
           port: "{http_port}"
           targetPort: "{http_port}"
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-    name: proxy-node-{id}-ingress
-    annotations:
-        nginx.ingress.kubernetes.io/rewrite-target: /resource/$1 # Changed to capture query part
-spec:
-    rules:
-        - http:
-              paths:
-                  - path: /node-{id}/resource/(.*) # Changed to capture query part
-                    pathType: ImplementationSpecific
-                    backend:
-                        service:
-                            name: proxy-node-{id}-external
-                            port:
-                                number: "{http_port}"
