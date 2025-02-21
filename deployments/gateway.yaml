@@ -61,4 +61,5 @@ spec:
         - protocol: TCP
           port: 40404
           targetPort: 40404
-    type: ClusterIP
+          nodePort: 30404 # Fixed NodePort for gateway
+    type: NodePort # Changed from ClusterIP

@@ -29,6 +29,10 @@ spec:
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.name
+                      - name: VM_IP
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: status.hostIP
                       - name: PORT
                         value: "{base_port}"
                       - name: MAIN_SERVER_ADDRESS

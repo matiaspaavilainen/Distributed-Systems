@@ -22,55 +22,58 @@ updates_thread = None
 # LOADBALANCING WITH NGINX REVERSE PROXY OR SOMETHING BETTER
 
 
-class LoadBalancer:
+class VMLoadBalancer:
     def __init__(self):
-        self.nodes = {}  # Store node:grpc_port mapping
-        self.current_index = 0
+        self.vm_nodes = {}  # VM IP -> Set of nodes
+        self.vm_weights = {}  # VM IP -> node count
+        self.current_vm = 0
         self.lock = threading.Lock()
 
     def add_node(self, node_info):
         with self.lock:
-            # node_info format: 'proxy-node-X-internal:GRPC_PORT'
-            if node_info not in self.nodes:
-                hostname, grpc_port = node_info.split(":")
-                grpc_port = int(grpc_port)
-                # Convert internal to external service name and calculate HTTP port
-                external_hostname = hostname.replace("-internal", "-external")
-                http_port = grpc_port + 1
-                self.nodes[node_info] = (external_hostname, http_port)
-                if DEBUG:
-                    print(f"Added node: {external_hostname} with HTTP port {http_port}")
+            vm_ip = node_info.split(":")[0]
+            if vm_ip not in self.vm_nodes:
+                self.vm_nodes[vm_ip] = set()
+                self.vm_weights[vm_ip] = 0
+            self.vm_nodes[vm_ip].add(node_info)
+            self.vm_weights[vm_ip] += 1
+            if DEBUG:
+                print(
+                    f"Added node to VM {vm_ip}, now has {self.vm_weights[vm_ip]} nodes"
+                )
 
-    def remove_node(self, node_info):
+    def get_next_vm_node(self):
         with self.lock:
-            if node_info in self.nodes:
-                hostname, http_port = self.nodes[node_info]
-                if DEBUG:
-                    print(f"Removing node: {hostname} with HTTP port {http_port}")
-                del self.nodes[node_info]
-
-    def get_next_node(self):
-        with self.lock:
-            if not self.nodes:
+            if not self.vm_nodes:
                 return None, None
-            nodes = list(self.nodes.items())
-            _, (hostname, http_port) = nodes[self.current_index]
-            self.current_index = (self.current_index + 1) % len(nodes)
-            return hostname, http_port
+
+            # Get VM with least load
+            vm_ips = list(self.vm_nodes.keys())
+            vm_ip = vm_ips[self.current_vm]
+            self.current_vm = (self.current_vm + 1) % len(vm_ips)
+
+            # Get random node from that VM
+            nodes = list(self.vm_nodes[vm_ip])
+            if not nodes:
+                return None, None
+
+            node_info = nodes[0]
+            _, nodeport, _, _ = node_info.split(":")
+            return vm_ip, int(nodeport)
 
 
-load_balancer = LoadBalancer()
+load_balancer = VMLoadBalancer()
 
 
 @app.get("/resource/{query}")
 async def handle_request(query: str):
-    hostname, port = load_balancer.get_next_node()
-    if not hostname:
+    vm_ip, nodeport = load_balancer.get_next_vm_node()  # or get_vm_for_query(query)
+    if not vm_ip:
         raise HTTPException(status_code=503, detail="No nodes available")
 
-    # Extract node ID from hostname (e.g., "proxy-node-0-external" -> "0")
-    node_id = hostname.split("-")[2]
-    target_url = f"http://localhost/node-{node_id}/resource/{query}"
+    target_url = f"http://{vm_ip}:{nodeport}/resource/{query}"
+    if DEBUG:
+        print(f"Redirecting to VM {vm_ip}")
     return RedirectResponse(url=target_url, status_code=307)
 
 
