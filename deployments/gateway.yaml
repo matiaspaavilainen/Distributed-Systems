@@ -29,26 +29,6 @@ spec:
                       - name: PYTHONPATH
                         value: "/app/consumer:/app/producer"
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-    name: gateway-ingress
-    namespace: default
-    annotations:
-        nginx.ingress.kubernetes.io/rewrite-target: /$1
-spec:
-    ingressClassName: nginx
-    rules:
-        - http:
-              paths:
-                  - path: /(.*)
-                    pathType: ImplementationSpecific
-                    backend:
-                        service:
-                            name: gateway
-                            port:
-                                number: 40404
----
 apiVersion: v1
 kind: Service
 metadata:
@@ -61,5 +41,5 @@ spec:
         - protocol: TCP
           port: 40404
           targetPort: 40404
-          nodePort: 30404 # Fixed NodePort for gateway
-    type: NodePort # Changed from ClusterIP
+          nodePort: 30404
+    type: NodePort
