@@ -48,7 +48,7 @@ To delete the nodes, simply delete the node-manager deployment. This will delete
 1. Ubuntu 22.04 VM
 2. sudo privileges
 
-### Clone Repository
+### Clone Repository (on the VM)
 
 ```bash
 git clone https://github.com/matiaspaavilainen/Distributed-Systems.git
