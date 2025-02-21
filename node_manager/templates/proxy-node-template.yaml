@@ -52,11 +52,11 @@ spec:
                       - name: PYTHONPATH
                         value: "/app:/app/consumer:/app/producer"
 ---
-# Internal service for gRPC
+# gRPC service with NodePort
 apiVersion: v1
 kind: Service
 metadata:
-    name: proxy-node-{id}-internal
+    name: proxy-node-{id}-grpc
 spec:
     type: NodePort
     selector:
@@ -64,16 +64,16 @@ spec:
         instance: "{id}"
     ports:
         - name: grpc
-          port: "{grpc_port}"
-          targetPort: "{grpc_port}"
-          nodePort: "{grpc_nodeport}"
+          port: { grpc_port }
+          targetPort: { grpc_port }
+          nodePort: { grpc_nodeport }
 
 ---
-# External service for HTTP
+# HTTP service
 apiVersion: v1
 kind: Service
 metadata:
-    name: proxy-node-{id}-external
+    name: proxy-node-{id}-http
 spec:
     type: ClusterIP
     selector:
@@ -81,5 +81,5 @@ spec:
         instance: "{id}"
     ports:
         - name: http
-          port: "{http_port}"
-          targetPort: "{http_port}"
+          port: { http_port }
+          targetPort: { http_port }

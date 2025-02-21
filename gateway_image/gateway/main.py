@@ -42,6 +42,23 @@ class VMLoadBalancer:
                     f"Added node to VM {vm_ip}, now has {self.vm_weights[vm_ip]} nodes"
                 )
 
+    def remove_node(self, node_info):
+        with self.lock:
+            vm_ip = node_info.split(":")[0]
+            if vm_ip in self.vm_nodes:
+                self.vm_nodes[vm_ip].discard(node_info)
+                self.vm_weights[vm_ip] -= 1
+                if DEBUG:
+                    print(
+                        f"Removed node from VM {vm_ip}, now has {self.vm_weights[vm_ip]} nodes"
+                    )
+                # Clean up VM entry if no nodes left
+                if not self.vm_nodes[vm_ip]:
+                    del self.vm_nodes[vm_ip]
+                    del self.vm_weights[vm_ip]
+                    if DEBUG:
+                        print(f"Removed VM {vm_ip} as it has no nodes")
+
     def get_next_vm_node(self):
         with self.lock:
             if not self.vm_nodes:

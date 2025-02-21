@@ -126,19 +126,18 @@ def find_item_from_any_db(query):
 def get_node_address():
     """Get the node's address with VM IP for both internal and external access"""
     pod_name = os.getenv("POD_NAME")
+    vm_ip = os.getenv("VM_IP", "localhost")
 
     if not pod_name:
         raise RuntimeError("POD_NAME environment variable not set")
 
     try:
         node_id = pod_name.split("-")[2]
+        grpc_nodeport = 30100 + int(node_id)  # Match the new nodeport scheme
     except IndexError:
         raise RuntimeError(f"Unexpected pod name format: {pod_name}")
 
-    # Format: vm_ip:http_nodeport:grpc_nodeport:node_id
-    http_nodeport = 30080
-    grpc_nodeport = 31000 + int(node_id)  # Unique gRPC NodePort per node
-    return f"{VM_IP}:{http_nodeport}:{grpc_nodeport}:{node_id}"
+    return f"{vm_ip}:30080:{grpc_nodeport}:{node_id}"
 
 
 def test_server_connection():

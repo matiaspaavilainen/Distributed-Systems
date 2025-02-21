@@ -51,13 +51,18 @@ def fill_template(template, node_id, ports):
     return filled
 
 
-def create_node(k8s_apps, k8s_core, k8s_networking, template, node_id, base_port=50060):
+def create_node(k8s_apps, k8s_core, template, node_id, base_port=50060):
     port_offset = node_id * 10
+    # Ensure NodePort is within valid range (30000-32767)
+    grpc_nodeport = (
+        30100 + node_id
+    )  # Starting from 30100 to leave room for other services
+
     ports = {
         "base_port": int(base_port + port_offset),
         "http_port": int(base_port + port_offset + 1),
         "grpc_port": int(base_port + port_offset),
-        "grpc_nodeport": 31000 + node_id,  # Add unique gRPC NodePort
+        "grpc_nodeport": grpc_nodeport,  # Already an int, no need for int()
     }
 
     print(f"Creating node {node_id} with ports: {ports}")
@@ -66,14 +71,14 @@ def create_node(k8s_apps, k8s_core, k8s_networking, template, node_id, base_port
     deployment = fill_template(template[0], node_id, ports)
     k8s_apps.create_namespaced_deployment(body=deployment, namespace="default")
 
-    internal_service = fill_template(template[1], node_id, ports)
-    k8s_core.create_namespaced_service(body=internal_service, namespace="default")
+    grpc_service = fill_template(template[1], node_id, ports)
+    k8s_core.create_namespaced_service(body=grpc_service, namespace="default")
 
-    external_service = fill_template(template[2], node_id, ports)
-    k8s_core.create_namespaced_service(body=external_service, namespace="default")
+    http_service = fill_template(template[2], node_id, ports)
+    k8s_core.create_namespaced_service(body=http_service, namespace="default")
 
 
-def delete_node(k8s_apps, k8s_core, k8s_networking, node_id):
+def delete_node(k8s_apps, k8s_core, node_id):
     """Delete a node and its services"""
     print(f"Deleting node {node_id}...")
     try:
@@ -83,12 +88,11 @@ def delete_node(k8s_apps, k8s_core, k8s_networking, node_id):
         )
         # Delete services
         k8s_core.delete_namespaced_service(
-            name=f"proxy-node-{node_id}-internal", namespace="default"
+            name=f"proxy-node-{id}-grpc", namespace="default"
         )
         k8s_core.delete_namespaced_service(
-            name=f"proxy-node-{node_id}-external", namespace="default"
+            name=f"proxy-node-{id}-http", namespace="default"
         )
-
     except Exception as e:
         print(f"Error deleting node {node_id}: {e}")
 
@@ -110,7 +114,7 @@ def main():
         stop_event.set()
         # Clean up nodes
         for i in range(NUM_NODES):
-            delete_node(k8s_apps, k8s_core, k8s_networking, i)
+            delete_node(k8s_apps, k8s_core, i)
         print("All nodes deleted")
 
     signal.signal(signal.SIGTERM, shutdown_gracefully)
@@ -120,7 +124,7 @@ def main():
     print(f"Starting node manager, creating {NUM_NODES} nodes...")
 
     for i in range(NUM_NODES):
-        create_node(k8s_apps, k8s_core, k8s_networking, template, i)
+        create_node(k8s_apps, k8s_core, template, i)
         print(f"Created node {i}")
 
     print("All nodes created. Node ports:")
