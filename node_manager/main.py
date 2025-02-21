@@ -39,6 +39,7 @@ def fill_template(template, node_id, ports):
                                 or k == "port"
                                 or k == "targetPort"
                                 or k == "number"
+                                or k == "nodePort"
                             ):
                                 obj[k] = int(port_value)
                             else:
@@ -62,7 +63,7 @@ def create_node(k8s_apps, k8s_core, template, node_id, base_port=50060):
         "base_port": int(base_port + port_offset),
         "http_port": int(base_port + port_offset + 1),
         "grpc_port": int(base_port + port_offset),
-        "grpc_nodeport": grpc_nodeport,  # Already an int, no need for int()
+        "grpc_nodeport": grpc_nodeport,
     }
 
     print(f"Creating node {node_id} with ports: {ports}")
