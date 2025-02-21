@@ -166,42 +166,135 @@ stern --version
 
 1. **Deploy Kafka**
 
-   ```bash
-   kubectl apply -f deployments/zookeeper.yaml
+    ```bash
+    kubectl apply -f deployments/zookeeper.yaml
+    kubectl wait --for=condition=ready pod -l app=zookeeper
 
-   # wait for zookeeper before starting kafka
-   kubectl get pods # to check if done
-   kubectl apply -f deployments/kafka-broker.yaml
-   ```
+    kubectl apply -f deployments/kafka-broker.yaml
+    ```
 
 2. **Deploy Database**
 
-   ```bash
-   kubectl apply -f deployments/mongodb-configmap.yaml
-   kubectl apply -f deployments/mongodb-deployment.yaml
-   ```
+    ```bash
+    kubectl apply -f deployments/mongodb-configmap.yaml
+    kubectl apply -f deployments/mongodb-deployment.yaml
+    ```
 
 3. **Deploy Core Services**
 
-   ```bash
-   kubectl apply -f deployments/server-deployment.yaml
-   kubectl apply -f deployments/lookup.yaml
-   kubectl apply -f deployments/gateway.yaml
-   ```
+    ```bash
+    kubectl apply -f deployments/server-deployment.yaml
+    kubectl apply -f deployments/proxy-nodes.yaml
+    kubectl apply -f deployments/lookup.yaml
+    kubectl wait --for=condition=ready pod -l app=lookup
+    kubectl apply -f deployments/gateway.yaml
+    ```
 
 4. **Deploy Node Manager**
 
-   ```bash
-   kubectl apply -f node_manager/templates/rbac.yaml
-   kubectl apply -f deployments/node-manager.yaml
-   ```
+    ```bash
+    kubectl apply -f node_manager/templates/rbac.yaml
+    kubectl apply -f deployments/node-manager.yaml
+    ```
 
 5. **Verify Deployment**
 
-   ```bash
-   kubectl get pods -A
-   curl http://<VM_IP>:30404/resource/John%20Williams
-   ```
+    ```bash
+    # Check gateway logs with stern
+    stern gateway -c gateway
+    # If active nodes shows 2 nodes for this VM, should be good to go
+
+    # Get VM's IP
+    ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -n 1
+    ```
+
+    **Network Access Note**:
+    - **Multipass**: Uses private IP, directly accessible from host
+    - **VirtualBox**:
+    NOT TESTED MIGHT WORK MIGHT NOT
+      1. Use "Bridged Adapter" in VM network settings
+      2. Or use "Host-only Adapter" with IP range 192.168.56.0/24
+      3. Or use Port Forwarding with NAT:
+
+         ```bash
+         # In VirtualBox Manager:
+         # Settings -> Network -> Advanced -> Port Forwarding
+         # Add rule:
+         # Name: Gateway
+         # Protocol: TCP
+         # Host Port: 30404
+         # Guest Port: 30404
+         ```
+
+    **Test the service**:
+
+    ```bash
+    # From VM
+    curl http://$VM_IP:30404/resource/John%20Williams
+
+    # From host (based on your VM setup):
+    # Bridged/Host-only: Use VM's IP
+    curl http://<VM_IP>:30404/resource/John%20Williams
+    # NAT with port forwarding: Use localhost
+    curl http://localhost:30404/resource/John%20Williams
+
+## Stopping and Restarting
+
+### Shutdown
+
+```bash
+# Stop all Kubernetes services
+sudo kubeadm reset -f
+
+# Stop containerd
+sudo systemctl stop containerd
+
+# Cleanup (optional)
+sudo rm -rf /etc/kubernetes/
+sudo rm -rf $HOME/.kube/
+sudo rm -rf /var/lib/etcd/
+```
+
+### Restart Later
+
+```bash
+# Start containerd
+sudo systemctl start containerd
+
+# Start kubelet
+sudo systemctl start kubelet
+
+# Reinitialize cluster
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+
+# Setup kubeconfig
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+# Allow pods on control-plane
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+
+# Reinstall CNI
+kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+
+# Redeploy components
+kubectl apply -f deployments/zookeeper.yaml
+kubectl wait --for=condition=ready pod -l app=zookeeper
+kubectl apply -f deployments/kafka-broker.yaml
+kubectl apply -f deployments/mongodb-configmap.yaml
+kubectl apply -f deployments/mongodb-deployment.yaml
+kubectl apply -f deployments/server-deployment.yaml
+kubectl apply -f deployments/lookup.yaml
+kubectl wait --for=condition=ready pod -l app=lookup
+kubectl apply -f deployments/gateway.yaml
+kubectl apply -f node_manager/templates/rbac.yaml
+kubectl apply -f deployments/node-manager.yaml
+
+# Verify deployment
+kubectl get pods -A
+stern gateway -c gateway
+```
 
 ### PROMETHEUS-GRAFANA
 
@@ -215,9 +308,9 @@ Create a service
 
 2. kubectl get pods -n monitoring
 
-3. kubectl --namespace monitoring port-forward <Name of the grafana pod> 3000
+3. kubectl --namespace monitoring port-forward <name of the grafana pod> 3000
 
-You can now access the grafana dashboard in
+    You can now access the grafana dashboard in
 
 4. <http://localhost:3000>
 
