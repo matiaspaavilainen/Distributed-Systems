@@ -64,9 +64,9 @@ spec:
         instance: "{id}"
     ports:
         - name: grpc
-          port: { grpc_port }
-          targetPort: { grpc_port }
-          nodePort: { grpc_nodeport }
+          port: {grpc_port}
+          targetPort: {grpc_port}
+          nodePort: {grpc_nodeport}
 
 ---
 # HTTP service
@@ -81,5 +81,5 @@ spec:
         instance: "{id}"
     ports:
         - name: http
-          port: { http_port }
-          targetPort: { http_port }
+          port: {http_port}
+          targetPort: {http_port}
