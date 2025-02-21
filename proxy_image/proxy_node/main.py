@@ -22,7 +22,9 @@ import grpc_server_SAND
 
 # Constants
 DEBUG = True
-MAIN_SERVER_ADDRESS = os.getenv("MAIN_SERVER_ADDRESS", "server-service:40002")
+VM_IP = os.getenv("VM_IP", "localhost")
+# NEEDS TO BE DIFFERENT FOR NODES ON DIFFERENT VMS
+MAIN_SERVER_ADDRESS = os.getenv("MAIN_SERVER_ADDRESS", f"{VM_IP}:30002")
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-service:27017")
 
 # Topics
@@ -93,8 +95,8 @@ def process_item_response(item, query):
 
 def parse_node_address(address):
     """Parse the combined address format into gRPC address"""
-    vm_ip, _, grpc_port, _ = address.split(":")
-    return f"{vm_ip}:{grpc_port}"
+    vm_ip, _, grpc_nodeport, _ = address.split(":")
+    return f"{vm_ip}:{grpc_nodeport}"  # Use NodePort for gRPC
 
 
 def find_item_from_any_db(query):
@@ -124,19 +126,19 @@ def find_item_from_any_db(query):
 def get_node_address():
     """Get the node's address with VM IP for both internal and external access"""
     pod_name = os.getenv("POD_NAME")
-    vm_ip = os.getenv("VM_IP", "localhost")  # Get VM IP from environment
 
     if not pod_name:
         raise RuntimeError("POD_NAME environment variable not set")
 
     try:
-        node_id = pod_name.split("-")[2]  # Get the numeric ID
+        node_id = pod_name.split("-")[2]
     except IndexError:
         raise RuntimeError(f"Unexpected pod name format: {pod_name}")
 
-    # Format: vm_ip:nodeport:grpc_port:node_id
-    # This allows both HTTP redirects and gRPC connections
-    return f"{vm_ip}:30080:{PORT}:{node_id}"
+    # Format: vm_ip:http_nodeport:grpc_nodeport:node_id
+    http_nodeport = 30080
+    grpc_nodeport = 31000 + int(node_id)  # Unique gRPC NodePort per node
+    return f"{VM_IP}:{http_nodeport}:{grpc_nodeport}:{node_id}"
 
 
 def test_server_connection():

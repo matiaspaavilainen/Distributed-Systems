@@ -52,12 +52,12 @@ def fill_template(template, node_id, ports):
 
 
 def create_node(k8s_apps, k8s_core, k8s_networking, template, node_id, base_port=50060):
-    """Create a new node with the given ID and port configuration"""
     port_offset = node_id * 10
     ports = {
         "base_port": int(base_port + port_offset),
         "http_port": int(base_port + port_offset + 1),
         "grpc_port": int(base_port + port_offset),
+        "grpc_nodeport": 31000 + node_id,  # Add unique gRPC NodePort
     }
 
     print(f"Creating node {node_id} with ports: {ports}")

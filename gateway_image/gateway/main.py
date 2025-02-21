@@ -99,7 +99,7 @@ def listen_for_updates():
                             for address in data:
                                 load_balancer.remove_node(address)
                         if DEBUG:
-                            print(f"Updated active nodes: {load_balancer.nodes}")
+                            print(f"Updated active nodes: {load_balancer.vm_nodes}")
                     except (KeyError, json.JSONDecodeError) as e:
                         print(f"Error processing message: {e}")
             except grpc.RpcError as e:

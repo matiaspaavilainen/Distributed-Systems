@@ -29,16 +29,18 @@ spec:
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.name
+
                       - name: VM_IP
                         valueFrom:
                             fieldRef:
                                 fieldPath: status.hostIP
+
                       - name: PORT
                         value: "{base_port}"
-                      - name: MAIN_SERVER_ADDRESS
-                        value: "server-service.default.svc.cluster.local:40002"
-                        # OR for cross-VM access:
-                        # value: "<VM-IP>:30002"
+
+                      - name: MAIN_SERVER_ADDRESS # NEEDS TO BE CHANGED FOR WORKER VMS
+                        value: "$(VM_IP):30002"
+
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_server"
                 - name: kafka-services
@@ -56,7 +58,7 @@ kind: Service
 metadata:
     name: proxy-node-{id}-internal
 spec:
-    type: ClusterIP
+    type: NodePort
     selector:
         app: proxy-node
         instance: "{id}"
@@ -64,6 +66,7 @@ spec:
         - name: grpc
           port: "{grpc_port}"
           targetPort: "{grpc_port}"
+          nodePort: "{grpc_nodeport}"
 
 ---
 # External service for HTTP
