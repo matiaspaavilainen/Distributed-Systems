@@ -17,6 +17,8 @@ DOCKER from main branch
 
 KUBERNETES
 
+minikube
+
 1. start minikube and "minikube addons enable ingress"
 2. Another terminal, go to root dir of the git project
 3. - kubectl create namespace kafka
@@ -38,6 +40,25 @@ KUBERNETES
 16. Should return the data
 
 To delete the nodes, simply delete the node-manager deployment. This will delete all the services and deployments related to the nodes.
+
+KUBEADM
+
+Doesn't need strimzi for some reason?
+
+1. Install kubeadm on ubuntu VM:
+<https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/>
+
+2. sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+
+3. mkdir -p $HOME/.kube
+    sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+    sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+4. kubectl apply -f <https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml>
+
+5. kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+
+6. Start things like in the previous one starting from  4
 
 ### PROMETHEUS-GRAFANA
 

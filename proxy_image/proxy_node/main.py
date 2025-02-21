@@ -91,6 +91,12 @@ def process_item_response(item, query):
     return None
 
 
+def parse_node_address(address):
+    """Parse the combined address format into gRPC address"""
+    vm_ip, _, grpc_port, _ = address.split(":")
+    return f"{vm_ip}:{grpc_port}"
+
+
 def find_item_from_any_db(query):
     item = search_local_db(query)
     if item is not None:
@@ -103,7 +109,8 @@ def find_item_from_any_db(query):
         if query in values:
             if DEBUG:
                 print(f"Item found in lookup table at {address}")
-            item = grpc_client_SAND.run(query, address)
+            grpc_address = parse_node_address(address)
+            item = grpc_client_SAND.run(query, grpc_address)
             result = process_item_response(item, query)
             if result:
                 return result
@@ -115,19 +122,21 @@ def find_item_from_any_db(query):
 
 
 def get_node_address():
-    """Get the node's internal service address for gRPC"""
+    """Get the node's address with VM IP for both internal and external access"""
     pod_name = os.getenv("POD_NAME")
+    vm_ip = os.getenv("VM_IP", "localhost")  # Get VM IP from environment
+
     if not pod_name:
         raise RuntimeError("POD_NAME environment variable not set")
 
-    # Extract the numeric ID from the deployment name
-    # Format will be like 'proxy-node-0-xyz' or 'proxy-node-1-xyz'
     try:
         node_id = pod_name.split("-")[2]  # Get the numeric ID
     except IndexError:
         raise RuntimeError(f"Unexpected pod name format: {pod_name}")
 
-    return f"proxy-node-{node_id}-internal:{PORT}"
+    # Format: vm_ip:nodeport:grpc_port:node_id
+    # This allows both HTTP redirects and gRPC connections
+    return f"{vm_ip}:30080:{PORT}:{node_id}"
 
 
 def test_server_connection():
