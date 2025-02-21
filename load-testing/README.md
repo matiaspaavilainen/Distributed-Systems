@@ -2,6 +2,7 @@ Load testing using Locust
 
 In this folder
 0. Have python installed on your system
+
 1. Set up the virtual environment ```python -m venv .```
 2. Activate the python virtual environment ```.\Scripts\Activate.bat```
 3. Install locust ```pip install locust```
