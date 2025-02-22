@@ -56,6 +56,11 @@ spec:
                           POD_NAME=$(hostname)
                           NODE=$(kubectl get pod $POD_NAME -n default -o=jsonpath='{.spec.nodeName}')
                           ORDINAL=${POD_NAME##*-}  # Extract number from pod name
+
+                          # First, remove any existing kafka-ordinal label
+                          kubectl label node $NODE kafka-ordinal- --overwrite || true
+
+                          # Then add the new label
                           echo "Labeling node $NODE with kafka-ordinal=$ORDINAL"
                           kubectl label node $NODE kafka-ordinal=$ORDINAL --overwrite
                   env:
