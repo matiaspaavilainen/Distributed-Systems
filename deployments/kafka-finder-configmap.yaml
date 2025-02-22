@@ -4,6 +4,9 @@ metadata:
   name: kafka-finder
 data:
   script: |
-    #!/bin/sh
-    KAFKA_POD=$(kubectl get pods -l app=kafka -o wide | grep ${NODE_NAME} | awk '{print $1}')
-    echo "${KAFKA_POD}.kafka:9092"
+    KAFKA_POD=$(kubectl get pods -l app=kafka --field-selector spec.nodeName=${NODE_NAME} --no-headers -o custom-columns=":metadata.name")
+    if [ -z "$KAFKA_POD" ]; then
+      echo "kafka-0.kafka:9092"  # fallback
+    else
+      echo "$KAFKA_POD.kafka:9092"
+    fi
