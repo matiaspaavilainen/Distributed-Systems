@@ -1,10 +1,10 @@
 apiVersion: apps/v1
-kind: StatefulSet  # Changed to StatefulSet for stable naming
+kind: StatefulSet
 metadata:
     name: lookup
 spec:
     serviceName: lookup
-    replicas: 4  # One for control plane + three workers
+    replicas: 4
     selector:
         matchLabels:
             app: lookup
@@ -13,6 +13,16 @@ spec:
             labels:
                 app: lookup
         spec:
+            affinity:
+                podAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                    - labelSelector:
+                        matchExpressions:
+                        - key: app
+                          operator: In
+                          values:
+                          - kafka
+                      topologyKey: kubernetes.io/hostname
             containers:
                 - name: lookup
                   image: matiaspaavilainen/distributed-systems:lookup_service

@@ -13,17 +13,6 @@ spec:
             labels:
                 app: kafka
         spec:
-            # Updated affinity to keep brokers on same node as lookup service
-            affinity:
-                podAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                    - labelSelector:
-                        matchExpressions:
-                        - key: app
-                          operator: In
-                          values:
-                          - lookup
-                      topologyKey: kubernetes.io/hostname
             containers:
                 - name: kafka
                   image: bitnami/kafka:latest
