@@ -6,7 +6,7 @@ data:
   script: |
     KAFKA_POD=$(kubectl get pods -l app=kafka --field-selector spec.nodeName=${NODE_NAME} --no-headers -o custom-columns=":metadata.name")
     if [ -z "$KAFKA_POD" ]; then
-      echo "kafka-0.kafka:9092"  # fallback
+      printf "kafka-0.kafka:9092"
     else
-      echo "$KAFKA_POD.kafka:9092"
+      printf "$KAFKA_POD.kafka:9092"
     fi
