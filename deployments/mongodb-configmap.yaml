@@ -4,6 +4,13 @@ metadata:
     name: mongo-init-script
 data:
     init.js: |
+        // Only initialize if this is mongodb-0 (control plane)
+        if (hostname().endsWith('-0')) {
+            // ...existing initialization code...
+        } else {
+            print("Not control plane instance, skipping initialization");
+        }
+
         // First, create the database
         db = db.getSiblingDB('SAND');
 

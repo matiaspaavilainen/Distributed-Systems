@@ -42,10 +42,9 @@ spec:
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.name
-                      - name: MONGO_URL
-                        value: "mongodb-$(POD_NAME).mongodb:27017"
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing/"
+
                 - name: kafka-services
                   image: matiaspaavilainen/distributed-systems:kafka_services
                   imagePullPolicy: Always

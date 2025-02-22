@@ -1,6 +1,6 @@
 ---
 apiVersion: apps/v1
-kind: StatefulSet # Changed to StatefulSet for consistent ordinal-based naming
+kind: StatefulSet
 metadata:
     name: mongodb
     labels:
@@ -16,33 +16,26 @@ spec:
             labels:
                 app: mongodb
         spec:
-            initContainers:
-                - name: node-labeler
-                  image: bitnami/kubectl
-                  command:
-                      - /bin/sh
-                      - -c
-                      - |
-                          NODE=$(kubectl get pod ${POD_NAME} -o=jsonpath='{.spec.nodeName}')
-                          kubectl label node $NODE mongodb-ordinal=${ORDINAL} --overwrite
-                  env:
-                      - name: POD_NAME
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.name
-                      - name: ORDINAL
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.annotations['statefulset.kubernetes.io/pod-name']
             affinity:
                 nodeAffinity:
                     requiredDuringSchedulingIgnoredDuringExecution:
                         nodeSelectorTerms:
                             - matchExpressions:
+                                  - key: node-role.kubernetes.io/control-plane
+                                    operator: Exists
                                   - key: kafka-ordinal
                                     operator: In
                                     values:
-                                        - kafka-$(ORDINAL) # Match with corresponding Kafka broker
+                                        - "0" # Match control-plane with kafka-0
+                            - matchExpressions:
+                                  - key: node-role.kubernetes.io/worker
+                                    operator: Exists
+                                  - key: kafka-ordinal
+                                    operator: In
+                                    values:
+                                        - "1" # Match workers with kafka-1,2,3
+                                        - "2"
+                                        - "3"
             containers:
                 - name: mongodb
                   image: mongo:latest
@@ -53,10 +46,14 @@ spec:
                         value: "root"
                       - name: MONGO_INITDB_ROOT_PASSWORD
                         value: "example"
-                      - name: ORDINAL
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.annotations['statefulset.kubernetes.io/pod-name']
+                  volumeMounts:
+                      - name: init-script
+                        mountPath: /docker-entrypoint-initdb.d/
+                        readOnly: true
+            volumes:
+                - name: init-script
+                  configMap:
+                      name: mongo-init-script
 ---
 apiVersion: v1
 kind: Service
