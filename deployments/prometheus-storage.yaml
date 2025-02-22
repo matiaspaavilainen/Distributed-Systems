@@ -24,7 +24,7 @@ spec:
             - key: kubernetes.io/hostname
               operator: In
               values:
-                - unaffected-spoonbill  # Replace with output of: kubectl get nodes
+                - YOUR_NODE_NAME  # Replace with output of: kubectl get nodes
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -45,4 +45,4 @@ spec:
             - key: kubernetes.io/hostname
               operator: In
               values:
-                - unaffected-spoonbill  # Replace with output of: kubectl get nodes
+                - YOUR_NODE_NAME  # Replace with output of: kubectl get nodes
