@@ -1,90 +1,51 @@
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet # Changed to StatefulSet for consistent ordinal-based naming
 metadata:
-    name: mongodb-main
+    name: mongodb
     labels:
         app: mongodb
-        role: main
 spec:
-    replicas: 1
+    serviceName: mongodb
+    replicas: 4 # 3 workers + 1 control plane, matching Kafka
     selector:
         matchLabels:
             app: mongodb
-            role: main
     template:
         metadata:
             labels:
                 app: mongodb
-                role: main
         spec:
-            affinity:
-                nodeAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                        nodeSelectorTerms:
-                            - matchExpressions:
-                                  - key: node-role.kubernetes.io/control-plane
-                                    operator: Exists
-            containers:
-                - name: mongodb
-                  image: mongo:latest
-                  ports:
-                      - containerPort: 27017
+            initContainers:
+                - name: node-labeler
+                  image: bitnami/kubectl
+                  command:
+                      - /bin/sh
+                      - -c
+                      - |
+                          NODE=$(kubectl get pod ${POD_NAME} -o=jsonpath='{.spec.nodeName}')
+                          kubectl label node $NODE mongodb-ordinal=${ORDINAL} --overwrite
                   env:
-                      - name: MONGO_INITDB_ROOT_USERNAME
-                        value: "root"
-                      - name: MONGO_INITDB_ROOT_PASSWORD
-                        value: "example"
-                  volumeMounts:
-                      - name: mongo-init
-                        mountPath: /docker-entrypoint-initdb.d
-            volumes:
-                - name: mongo-init
-                  configMap:
-                      name: mongo-init-script
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-    name: mongodb-node
-    labels:
-        app: mongodb
-        role: node
-spec:
-    serviceName: mongodb-node
-    replicas: 3 # One per worker node
-    selector:
-        matchLabels:
-            app: mongodb
-            role: node
-    template:
-        metadata:
-            labels:
-                app: mongodb
-                role: node
-        spec:
-            hostNetwork: true
+                      - name: POD_NAME
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.name
+                      - name: ORDINAL
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.annotations['statefulset.kubernetes.io/pod-name']
             affinity:
                 nodeAffinity:
                     requiredDuringSchedulingIgnoredDuringExecution:
                         nodeSelectorTerms:
                             - matchExpressions:
-                                  - key: node-role.kubernetes.io/worker
-                                    operator: Exists
-                podAntiAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                        - labelSelector:
-                              matchExpressions:
-                                  - key: app
+                                  - key: kafka-ordinal
                                     operator: In
                                     values:
-                                        - mongodb
-                          topologyKey: "kubernetes.io/hostname"
+                                        - kafka-$(ORDINAL) # Match with corresponding Kafka broker
             containers:
                 - name: mongodb
                   image: mongo:latest
-                  command: ["mongod"]
-                  args: ["--bind_ip", "127.0.0.1"]
                   ports:
                       - containerPort: 27017
                   env:
@@ -92,16 +53,19 @@ spec:
                         value: "root"
                       - name: MONGO_INITDB_ROOT_PASSWORD
                         value: "example"
+                      - name: ORDINAL
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.annotations['statefulset.kubernetes.io/pod-name']
 ---
 apiVersion: v1
 kind: Service
 metadata:
-    name: mongodb-main-service
+    name: mongodb
 spec:
-    type: ClusterIP # Keep this accessible within cluster
+    clusterIP: None # Headless service for StatefulSet DNS
     selector:
         app: mongodb
-        role: main
     ports:
         - protocol: TCP
           port: 27017

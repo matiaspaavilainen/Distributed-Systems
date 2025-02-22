@@ -4,7 +4,7 @@ metadata:
     name: lookup
 spec:
     serviceName: lookup
-    replicas: 4
+    replicas: 4 # Match Kafka and MongoDB replicas
     selector:
         matchLabels:
             app: lookup
@@ -13,22 +13,32 @@ spec:
             labels:
                 app: lookup
         spec:
-            hostNetwork: true # Add host networking
+            affinity:
+                nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                        nodeSelectorTerms:
+                            - matchExpressions:
+                                  - key: kafka-ordinal
+                                    operator: In
+                                    values:
+                                        - kafka-$(ORDINAL) # Match with corresponding Kafka broker
             containers:
                 - name: lookup
-                  image: matiaspaavilainen/distributed-systems:lookup_service
-                  imagePullPolicy: Always
-                  ports:
-                      - containerPort: 50051
                   env:
                       - name: MONGO_URL
-                        value: "mongodb://root:example@localhost:27017" # Changed to localhost
+                        value: "mongodb://root:example@mongodb-$(ORDINAL).mongodb:27017" # Connect to matching MongoDB
+                      - name: ORDINAL
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.annotations['statefulset.kubernetes.io/pod-name']
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing"
                 - name: kafka-services
                   image: matiaspaavilainen/distributed-systems:kafka_services
                   imagePullPolicy: Always
                   env:
+                      - name: KAFKA_BROKER
+                        value: "kafka-$(ORDINAL).kafka:9092" # Connect to matching Kafka broker
                       - name: PORT_BASE
                         value: "30000"
                       - name: PYTHONPATH
