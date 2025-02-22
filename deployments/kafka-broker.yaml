@@ -4,7 +4,7 @@ metadata:
     name: kafka
 spec:
     serviceName: kafka
-    replicas: 3 # One for each worker node
+    replicas: 4 # One for each node
     selector:
         matchLabels:
             app: kafka
