@@ -37,13 +37,12 @@ spec:
                 nodeAffinity:
                     requiredDuringSchedulingIgnoredDuringExecution:
                         nodeSelectorTerms:
-                            - matchExpressions:
+                            - matchExpressions: # For kafka-0 on control plane
                                   - key: node-role.kubernetes.io/control-plane
                                     operator: Exists
-                                  - key: kafka-ordinal
-                                    operator: In
-                                    values:
-                                        - "kafka-0" # Control plane gets kafka-0
+                            - matchExpressions: # For kafka-1 through kafka-3 on workers
+                                  - key: node-role.kubernetes.io/worker
+                                    operator: Exists
             containers:
                 - name: kafka
                   image: bitnami/kafka:latest
