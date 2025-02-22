@@ -8,8 +8,7 @@ volumeBindingMode: WaitForFirstConsumer
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: prometheus-server-pv
-  namespace: monitoring
+  name: pvc-prometheus-server
 spec:
   capacity:
     storage: 8Gi
@@ -30,8 +29,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: storage-prometheus-alertmanager-0
-  namespace: monitoring
+  name: pvc-prometheus-alertmanager
 spec:
   capacity:
     storage: 2Gi
