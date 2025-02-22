@@ -20,10 +20,21 @@ spec:
                     requiredDuringSchedulingIgnoredDuringExecution:
                         nodeSelectorTerms:
                             - matchExpressions:
+                                  - key: node-role.kubernetes.io/control-plane
+                                    operator: Exists
                                   - key: kafka-ordinal
                                     operator: In
                                     values:
-                                        - "${HOSTNAME##*-}"
+                                        - "0" # Match control-plane with kafka-0
+                            - matchExpressions:
+                                  - key: node-role.kubernetes.io/worker
+                                    operator: Exists
+                                  - key: kafka-ordinal
+                                    operator: In
+                                    values:
+                                        - "1" # Match workers with kafka-1,2,3
+                                        - "2"
+                                        - "3"
             containers:
                 - name: kafka
                   image: bitnami/kafka:latest

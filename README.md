@@ -146,59 +146,107 @@ stern --version
 5. **Initialize Kubernetes Cluster**
 
     ```bash
-    sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 
+    # Get and store the IP address
+    CONTROL_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -n 1)
+    echo "Control plane IP: $CONTROL_IP"
+
+    # Initialize with captured IP
+    sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=$CONTROL_IP
+
+    # Setup kubeconfig
     mkdir -p $HOME/.kube
     sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
     sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-    # important to run, nothign works without this 
+    # important to run, nothing works without this 
     kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+
+    # Install flannel (CNI)
+    kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+
+    # Check that the control plane is running
+    kubectl get nodes
+    # Status should be: Ready
     ```
 
-6. **Install CNI (Flannel)**
+6. **Join Worker Nodes**
 
     ```bash
-    kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+    # On control plane, generate the join command
+    # EXPIRES AFTER 24 HOURS
+    kubeadm token create --print-join-command
+
+    # On each worker node, run the join command with sudo
+    # Example (actual command will be different):
+    sudo kubeadm join <control-plane-ip>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>
+
+    # After joining, verify on control plane that nodes are connected
+    # Takes some time for all of them to be Ready
+    kubectl get nodes
+    ```
+
+7. **Label Worker Nodes**
+
+    ```bash
+    # Get node names
+    kubectl get nodes
+
+    # Label control-plane node (replace <control-plane-name> with actual node name)
+
+    kubectl label node <control-plane-name> kafka-ordinal=0 node-role.kubernetes.io/control-plane=true
+
+    # Label worker nodes (replace <worker-X-name> with actual node names)
+
+    kubectl label node <worker1-name> kafka-ordinal=1 node-role.kubernetes.io/worker=true
+    kubectl label node <worker2-name> kafka-ordinal=2 node-role.kubernetes.io/worker=true
+    kubectl label node <worker3-name> kafka-ordinal=3 node-role.kubernetes.io/worker=true
+
+    # Verify labels
+
+    kubectl get nodes --show-labels | grep -E "kafka-ordinal|kubernetes.io/role"
     ```
 
 ### Deploy Application Components
 
-1. **Deploy Kafka**
+1. **Deploy Kafka Infrastructure**
 
     ```bash
+    # Deploy Zookeeper first
     kubectl apply -f deployments/zookeeper.yaml
-    
-    # wait
+    kubectl wait --for=condition=ready pod -l app=zookeeper
+
+    # Then deploy Kafka
     kubectl apply -f deployments/kafka-broker.yaml
+    kubectl wait --for=condition=ready pod -l app=kafka
     ```
 
-2. **Deploy Database**
+2. **Deploy Core Services**
 
     ```bash
+    # Deploy MongoDB first
     kubectl apply -f deployments/mongodb-configmap.yaml
     kubectl apply -f deployments/mongodb-deployment.yaml
-    ```
+    kubectl wait --for=condition=ready pod -l app=mongodb-node
 
-3. **Deploy Core Services**
+    # Then deploy lookup service
+    kubectl apply -f deployments/lookup.yaml
+    kubectl wait --for=condition=ready pod -l app=lookup
 
-    ```bash
+    # Deploy remaining services
     kubectl apply -f deployments/server-deployment.yaml
     kubectl apply -f deployments/proxy-nodes.yaml
-    kubectl apply -f deployments/lookup.yaml
-    
-    #wait
     kubectl apply -f deployments/gateway.yaml
     ```
 
-4. **Deploy Node Manager**
+3. **Deploy Node Manager**
 
     ```bash
     kubectl apply -f node_manager/templates/rbac.yaml
     kubectl apply -f deployments/node-manager.yaml
     ```
 
-5. **Verify Deployment**
+4. **Verify Deployment**
 
     ```bash
     # Check gateway logs with stern
@@ -330,14 +378,19 @@ sudo rm -rf /var/lib/etcd/
 ### Restart Later
 
 ```bash
+# On Control Plane:
 # Start containerd
 sudo systemctl start containerd
 
 # Start kubelet
 sudo systemctl start kubelet
 
-# Reinitialize cluster
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+# Get and store the IP address
+CONTROL_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -n 1)
+echo "Control plane IP: $CONTROL_IP"
+
+# Initialize with captured IP
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=$CONTROL_IP
 
 # Setup kubeconfig
 mkdir -p $HOME/.kube
@@ -350,14 +403,30 @@ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 # Reinstall CNI
 kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
 
+# Generate new join command for workers
+kubeadm token create --print-join-command
+
+# On Each Worker Node:
+# Start services
+sudo systemctl start containerd
+sudo systemctl start kubelet
+
+# Run the new join command from control plane
+sudo kubeadm join <control-plane-ip>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>
+
+# Back on Control Plane - Verify nodes are connected
+kubectl get nodes
+
 # Redeploy components
 kubectl apply -f deployments/zookeeper.yaml
+
 # wait
 kubectl apply -f deployments/kafka-broker.yaml
 kubectl apply -f deployments/mongodb-configmap.yaml
 kubectl apply -f deployments/mongodb-deployment.yaml
 kubectl apply -f deployments/server-deployment.yaml
 kubectl apply -f deployments/lookup.yaml
+
 # wait
 kubectl apply -f deployments/gateway.yaml
 kubectl apply -f deployments/proxy-nodes.yaml

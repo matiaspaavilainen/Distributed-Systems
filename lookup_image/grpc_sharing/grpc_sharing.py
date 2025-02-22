@@ -4,7 +4,7 @@ from concurrent import futures
 from . import lookup_sharing_pb2, lookup_sharing_pb2_grpc
 
 
-class LookupServicer(lookup_sharing_pb2_grpc.LookupServicer):
+class LookupServicer(lookup_sharing_pb2_grpc.LookupSharingServicer):
     def __init__(self, collection, vector_clock, update_table_func):
         self.collection = collection
         self.vector_clock = vector_clock
@@ -36,7 +36,7 @@ def broadcast_to_peers(data, update_type, vector_clock, peer_lookups):
     for peer in peer_lookups:
         try:
             with grpc.insecure_channel(peer) as channel:
-                stub = lookup_sharing_pb2_grpc.LookupStub(channel)
+                stub = lookup_sharing_pb2_grpc.LookupSharingStub(channel)
                 request = lookup_sharing_pb2.UpdateRequest(
                     data=json.dumps(data),
                     type=update_type,
@@ -49,7 +49,7 @@ def broadcast_to_peers(data, update_type, vector_clock, peer_lookups):
 
 def start_grpc_server(collection, vector_clock, port, update_table_func):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    lookup_sharing_pb2_grpc.add_LookupServicer_to_server(
+    lookup_sharing_pb2_grpc.add_LookupSharingServicer_to_server(
         LookupServicer(collection, vector_clock, update_table_func), server
     )
     server.add_insecure_port(f"[::]:{port}")
