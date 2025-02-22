@@ -83,6 +83,10 @@ spec:
                   ports:
                       - containerPort: 9092
                   env:
+                      - name: POD_NAME
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.name
                       - name: KAFKA_CFG_ZOOKEEPER_CONNECT
                         value: "zookeeper.default.svc.cluster.local:2181"
                       - name: ALLOW_PLAINTEXT_LISTENER
@@ -92,13 +96,16 @@ spec:
                       - name: KAFKA_CFG_LISTENERS
                         value: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092"
                       - name: KAFKA_CFG_ADVERTISED_LISTENERS
-                        value: "INTERNAL://$(POD_NAME).kafka:9092,EXTERNAL://$(POD_NAME).kafka:29092"
-                      - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
-                        value: "INTERNAL"
-                      - name: POD_NAME
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.name
+                        value: "INTERNAL://kafka-$(ORDINAL).kafka:9092,EXTERNAL://kafka-$(ORDINAL).kafka:29092"
+                      - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
+                        value: "INTERNAL"
+                      - name: ORDINAL
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.annotations['statefulset.kubernetes.io/pod-name']
 ---
 apiVersion: v1
 kind: Service
