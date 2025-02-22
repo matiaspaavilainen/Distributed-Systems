@@ -44,10 +44,16 @@ spec:
                                 fieldPath: metadata.name
                       - name: MONGO_URL
                         value: "mongodb-${ORDINAL##*-}.mongodb:27017"
+                      - name: PYTHONPATH
+                        value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing/"
                 - name: kafka-services
                   image: matiaspaavilainen/distributed-systems:kafka_services
                   imagePullPolicy: Always
                   env:
+                      - name: PORT_BASE
+                        value: "30000"
+                      - name: PYTHONPATH
+                        value: "/app/consumer:/app/producer"
                       - name: ORDINAL
                         valueFrom:
                             fieldRef:
