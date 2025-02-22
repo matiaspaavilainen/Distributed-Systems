@@ -15,7 +15,7 @@
 import os
 from pymongo import MongoClient
 
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-service:27017")
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-main-service:27017")
 
 client = MongoClient(MONGO_URL)
 db = client.SAND

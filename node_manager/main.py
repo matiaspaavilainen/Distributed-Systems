@@ -18,6 +18,10 @@ def initialize_k8s():
 # USE HPA, WITH PROMETHEUS REQUEST PER SECOND
 # https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
 
+# prometheus in cluster access
+# prometheus-server.monitoring.svc.cluster.local:80
+# prometheus-prometheus-pushgateway.monitoring.svc.cluster.local:9091
+
 
 def fill_template(template, node_id, ports):
     """Fill template with node ID and port values"""
@@ -105,7 +109,7 @@ def main():
 
     stop_event = threading.Event()
     k8s_apps, k8s_core, k8s_networking = initialize_k8s()
-    NUM_NODES = 2
+    NUM_NODES = 3
 
     with open(template_path, "r") as f:
         template = list(yaml.safe_load_all(f))

@@ -15,6 +15,17 @@ spec:
                 instance: "{id}"
             name: proxy-node-{id}
         spec:
+            # Add affinity to keep nodes with their manager
+            affinity:
+                podAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                    - labelSelector:
+                        matchExpressions:
+                        - key: app
+                          operator: In
+                          values:
+                          - node-manager
+                      topologyKey: kubernetes.io/hostname
             containers:
                 - name: proxy-node
                   image: matiaspaavilainen/distributed-systems:proxy_node
@@ -38,8 +49,11 @@ spec:
                       - name: PORT
                         value: "{base_port}"
 
-                      - name: MAIN_SERVER_ADDRESS # NEEDS TO BE CHANGED FOR WORKER VMS
-                        value: "$(VM_IP):30002"
+                      - name: MONGO_URL
+                        value: "mongodb://root:example@mongodb-node-service:27017"
+
+                      - name: MAIN_SERVER_ADDRESS
+                        value: "server-service.default.svc.cluster.local:40002"
 
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_server"
@@ -51,6 +65,8 @@ spec:
                         value: "{base_port}"
                       - name: PYTHONPATH
                         value: "/app:/app/consumer:/app/producer"
+                      - name: KAFKA_BROKER
+                        value: "kafka-$(POD_NAME).kafka:9092"  # Local broker address
 ---
 # Internal service for gRPC
 apiVersion: v1

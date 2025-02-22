@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package lookup_sharing;
+
+service LookupSharing {
+    rpc ReceivePeerUpdate (UpdateRequest) returns (UpdateResponse);
+}
+
+message UpdateRequest {
+    string data = 1;
+    string type = 2;
+    string vector_clock = 3;
+}
+
+message UpdateResponse {
+    bool success = 1;
+}

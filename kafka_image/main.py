@@ -11,6 +11,8 @@ stop_event = threading.Event()
 consumer_thread = None
 producer_thread = None
 
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "broker:9092")
+
 
 def shutdown_gracefully(*args):
     print("Kafka services received termination signal...")
@@ -46,9 +48,14 @@ def main(base_port):
 
     print(f"Started consumer on port: {consumer_port}")
     print(f"Started producer on port: {producer_port}")
+    print(f"Using Kafka broker: {KAFKA_BROKER}")
 
-    consumer_thread = threading.Thread(target=start_consumer, args=(consumer_port,))
-    producer_thread = threading.Thread(target=start_producer, args=(producer_port,))
+    consumer_thread = threading.Thread(
+        target=start_consumer, args=(consumer_port, KAFKA_BROKER)
+    )
+    producer_thread = threading.Thread(
+        target=start_producer, args=(producer_port, KAFKA_BROKER)
+    )
 
     consumer_thread.start()
     producer_thread.start()

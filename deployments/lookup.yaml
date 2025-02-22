@@ -1,9 +1,10 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet  # Changed to StatefulSet for stable naming
 metadata:
     name: lookup
 spec:
-    replicas: 1
+    serviceName: lookup
+    replicas: 4  # One for control plane + three workers
     selector:
         matchLabels:
             app: lookup
@@ -16,16 +17,37 @@ spec:
                 - name: lookup
                   image: matiaspaavilainen/distributed-systems:lookup_service
                   imagePullPolicy: Always
+                  ports:
+                    - containerPort: 50051  # gRPC port for peer communication
                   env:
+                      - name: POD_NAME
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.name
                       - name: MONGO_URL
-                        value: "mongodb://root:example@mongodb-service:27017"
+                        value: "mongodb://root:example@mongodb-node-service:27017"
                       - name: PYTHONPATH
-                        value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer"
+                        value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing"
                 - name: kafka-services
                   image: matiaspaavilainen/distributed-systems:kafka_services
                   imagePullPolicy: Always
                   env:
                       - name: PORT_BASE
                         value: "30000"
+                      - name: KAFKA_BROKER
+                        value: "kafka-$(POD_NAME).kafka:9092"  # Local broker address
                       - name: PYTHONPATH
                         value: "/app/consumer:/app/producer"
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: lookup
+spec:
+    clusterIP: None  # Headless service for StatefulSet DNS
+    selector:
+        app: lookup
+    ports:
+        - name: grpc
+          port: 50051
+          targetPort: 50051

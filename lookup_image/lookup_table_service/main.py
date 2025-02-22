@@ -4,10 +4,14 @@ import time
 import signal
 import json
 import grpc
+import socket
+from dataclasses import dataclass
+from typing import Dict
 from pymongo import MongoClient
 
 from kafka_messaging.consumer import consumer_pb2, consumer_pb2_grpc
 from kafka_messaging.producer import producer_pb2, producer_pb2_grpc
+from grpc_sharing import broadcast_to_peers, start_grpc_server
 
 # Constants
 CONSUMER_PORT = 30002
@@ -15,12 +19,21 @@ PRODUCER_PORT = 30003
 NODE_UPDATES_TOPIC = "node-updates"
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
 LOOKUP_TABLE_TOPIC = "lookup-table"
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-service:27017")
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-node-service:27017")
+
+PEER_LOOKUPS = ["lookup-0:50051", "lookup-1:50051", "lookup-2:50051"]
+GRPC_PORT = 50051
 
 # Global variables
 stop_event = threading.Event()
 collection = None
 process_thread = None
+server = None
+
+
+@dataclass
+class VectorClock:
+    clocks: Dict[str, int]
 
 
 def broadcast_table():
@@ -52,8 +65,13 @@ def send_update(data, update_type):
         print(f"Error sending update: {e}")
 
 
-def update_table(data, update_type):
+def update_table(data, update_type, from_peer=False):
     try:
+        # Update vector clock
+        node_id = socket.gethostname()
+        vector_clock.clocks[node_id] = vector_clock.clocks.get(node_id, 0) + 1
+
+        # MongoDB updates
         if update_type == "A":
             for address, values in data.items():
                 collection.update_one(
@@ -71,8 +89,16 @@ def update_table(data, update_type):
                     {"$set": {"values": []}},
                     upsert=True,
                 )
+
+        # Broadcast to Kafka always
         send_update(data, update_type)
         broadcast_table()
+
+        # Only propagate to peers if update is local
+        if not from_peer:
+            peer_lookups = [p for p in PEER_LOOKUPS if not p.startswith(node_id)]
+            broadcast_to_peers(data, update_type, vector_clock, peer_lookups)
+
     except Exception as e:
         print(f"Error updating table: {e}")
 
@@ -90,24 +116,36 @@ def process_updates():
                     if stop_event.is_set():
                         break
                     message = json.loads(response.data)
-                    update_table(message["data"], message["type"])
+                    update_table(message["data"], message["type"], from_peer=False)
         except Exception:
             time.sleep(1)
 
 
 def shutdown_gracefully(*args):
+    global server
     print("Received termination signal, shutting down gracefully...")
+
+    # Stop accepting new requests
     stop_event.set()
+
+    # Wait for Kafka consumer thread to finish
     if process_thread and process_thread.is_alive():
         process_thread.join(timeout=5)
+
+    # Gracefully stop gRPC server
+    if server:
+        print("Stopping gRPC server...")
+        server.stop(grace=5)  # Give 5 seconds for ongoing RPCs to complete
+        server.wait_for_termination(timeout=5)
+
     print("Shutdown complete")
     os._exit(0)
 
 
 def main():
-    global collection, process_thread
+    global collection, process_thread, vector_clock, server
 
-    # Register signal handler for Kubernetes pod termination
+    vector_clock = VectorClock({})
     signal.signal(signal.SIGTERM, shutdown_gracefully)
 
     client = MongoClient(MONGO_URL)
@@ -116,11 +154,15 @@ def main():
     collection.drop()
     collection.create_index("address", unique=True)
 
+    # Start gRPC server
+    server = start_grpc_server(collection, vector_clock, GRPC_PORT, update_table)
+
+    # Start Kafka consumer thread
     process_thread = threading.Thread(target=process_updates)
     process_thread.daemon = True
     process_thread.start()
 
-    print("Started service succesfully")
+    print("Started service successfully")
 
     try:
         while True:
@@ -129,6 +171,9 @@ def main():
                 process_thread.daemon = True
                 process_thread.start()
             time.sleep(5)
+    except KeyboardInterrupt:
+        server.stop(0)
+        shutdown_gracefully()
     except Exception as e:
         print(f"Error in main: {e}")
         shutdown_gracefully()

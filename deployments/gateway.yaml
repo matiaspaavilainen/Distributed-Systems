@@ -28,6 +28,8 @@ spec:
                         value: "30050"
                       - name: PYTHONPATH
                         value: "/app/consumer:/app/producer"
+                      - name: KAFKA_BROKER
+                        value: "kafka-$(POD_NAME).kafka:9092"  # Local broker address
 ---
 apiVersion: v1
 kind: Service

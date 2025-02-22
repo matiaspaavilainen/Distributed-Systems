@@ -9,9 +9,9 @@ import producer_pb2_grpc
 
 
 class ProducerService(producer_pb2_grpc.ProducerServicer):
-    def __init__(self, stop_event):
+    def __init__(self, stop_event, broker_address):
         self.producer = KafkaProducer(
-            bootstrap_servers=["broker:9092"],
+            bootstrap_servers=[broker_address],
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),
         )
         self.stop_event = stop_event
@@ -31,10 +31,10 @@ class ProducerService(producer_pb2_grpc.ProducerServicer):
             return producer_pb2.SendMessageResponse(status=f"error: {excp}")
 
 
-def serve(port, stop_event):
+def serve(port, stop_event, broker_address):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     producer_pb2_grpc.add_ProducerServicer_to_server(
-        ProducerService(stop_event), server
+        ProducerService(stop_event, broker_address), server
     )
     server.add_insecure_port(f"localhost:{port}")
     server.start()

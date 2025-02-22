@@ -1,9 +1,10 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet  # Changed to StatefulSet for stable naming
 metadata:
     name: node-manager
 spec:
-    replicas: 1
+    serviceName: node-manager
+    replicas: 3  # One for each worker node
     selector:
         matchLabels:
             app: node-manager
@@ -12,8 +13,35 @@ spec:
             labels:
                 app: node-manager
         spec:
+            affinity:
+                # Ensure one manager per worker node
+                podAntiAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                    - labelSelector:
+                        matchExpressions:
+                        - key: app
+                          operator: In
+                          values:
+                          - node-manager
+                      topologyKey: kubernetes.io/hostname
+                nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                        nodeSelectorTerms:
+                        - matchExpressions:
+                          - key: node-role.kubernetes.io/worker
+                            operator: Exists
             serviceAccountName: node-manager-account
             containers:
                 - name: node-manager
                   image: matiaspaavilainen/distributed-systems:node_manager
                   imagePullPolicy: Always
+                  env:
+                    - name: POD_NAME
+                      valueFrom:
+                          fieldRef:
+                              fieldPath: metadata.name
+                    # Add node name for local resource management
+                    - name: NODE_NAME
+                      valueFrom:
+                          fieldRef:
+                              fieldPath: spec.nodeName

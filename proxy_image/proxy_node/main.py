@@ -22,10 +22,15 @@ import grpc_server_SAND
 
 # Constants
 DEBUG = True
-VM_IP = os.getenv("VM_IP", "localhost")
-# NEEDS TO BE DIFFERENT FOR NODES ON DIFFERENT VMS
-MAIN_SERVER_ADDRESS = os.getenv("MAIN_SERVER_ADDRESS", f"{VM_IP}:30002")
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://root:example@mongodb-service:27017")
+VM_IP = os.getenv("VM_IP")
+# Use Kubernetes service discovery for main server
+MAIN_SERVER_ADDRESS = os.getenv(
+    "MAIN_SERVER_ADDRESS",
+    "server-service.default.svc.cluster.local:40002",  # Internal cluster DNS
+)
+
+# Use local MongoDB on worker node
+MONGO_URL = "mongodb://root:example@mongodb-node-service:27017"
 
 # Topics
 LOOKUP_UPDATES_TOPIC = "lookup-updates"

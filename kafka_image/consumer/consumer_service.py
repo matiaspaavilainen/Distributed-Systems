@@ -9,15 +9,16 @@ import consumer_pb2_grpc
 
 
 class ConsumerService(consumer_pb2_grpc.ConsumerServicer):
-    def __init__(self, stop_event):
+    def __init__(self, stop_event, broker_address):
         self.consumers = {}
         self.stop_event = stop_event
+        self.broker_address = broker_address
 
     def get_consumer(self, topic):
         if topic not in self.consumers:
             self.consumers[topic] = KafkaConsumer(
                 topic,
-                bootstrap_servers=["broker:9092"],
+                bootstrap_servers=[self.broker_address],
                 value_deserializer=lambda v: json.loads(v.decode("utf-8")),
                 auto_offset_reset="latest",
                 enable_auto_commit=False,
@@ -60,10 +61,10 @@ class ConsumerService(consumer_pb2_grpc.ConsumerServicer):
                     )
 
 
-def serve(port, stop_event):
+def serve(port, stop_event, broker_address):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     consumer_pb2_grpc.add_ConsumerServicer_to_server(
-        ConsumerService(stop_event), server
+        ConsumerService(stop_event, broker_address), server
     )
     server.add_insecure_port(f"localhost:{port}")
     server.start()

@@ -19,8 +19,6 @@ app = FastAPI()
 stop_event = threading.Event()
 updates_thread = None
 
-# LOADBALANCING WITH NGINX REVERSE PROXY OR SOMETHING BETTER
-
 
 class VMLoadBalancer:
     def __init__(self):
@@ -90,7 +88,7 @@ async def handle_request(query: str):
 
     target_url = f"http://{vm_ip}:{nodeport}/resource/{query}"
     if DEBUG:
-        print(f"Redirecting to VM {vm_ip}")
+        print(f"Redirecting to VM {target_url}")
     return RedirectResponse(url=target_url, status_code=307)
 
 
