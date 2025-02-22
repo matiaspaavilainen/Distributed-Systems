@@ -21,24 +21,28 @@ spec:
                                   - key: kafka-ordinal
                                     operator: In
                                     values:
-                                        - kafka-$(ORDINAL) # Match with corresponding Kafka broker
+                                        - $(POD_ORDINAL)
             containers:
                 - name: lookup
                   env:
-                      - name: MONGO_URL
-                        value: "mongodb://root:example@mongodb-$(ORDINAL).mongodb:27017" # Connect to matching MongoDB
-                      - name: ORDINAL
+                      - name: POD_ORDINAL
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.annotations['statefulset.kubernetes.io/pod-name']
+                      - name: MONGO_URL
+                        value: "mongodb-$(POD_ORDINAL).mongodb:27017"
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing"
                 - name: kafka-services
                   image: matiaspaavilainen/distributed-systems:kafka_services
                   imagePullPolicy: Always
                   env:
+                      - name: POD_ORDINAL
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.annotations['statefulset.kubernetes.io/pod-name']
                       - name: KAFKA_BROKER
-                        value: "kafka-$(ORDINAL).kafka:9092" # Connect to matching Kafka broker
+                        value: "kafka-$(POD_ORDINAL).kafka:9092"
                       - name: PORT_BASE
                         value: "30000"
                       - name: PYTHONPATH
