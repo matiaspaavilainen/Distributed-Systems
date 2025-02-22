@@ -18,32 +18,28 @@ spec:
                     requiredDuringSchedulingIgnoredDuringExecution:
                         nodeSelectorTerms:
                             - matchExpressions:
-                                  - key: kafka-ordinal
+                                  - key: kafka-ordinal # Match with node labeled by Kafka
                                     operator: In
                                     values:
-                                        - $(POD_ORDINAL)
+                                        - "${HOSTNAME##*-}" # Extract ordinal from pod name
             containers:
                 - name: lookup
+                  image: matiaspaavilainen/distributed-systems:lookup_service
+                  imagePullPolicy: Always
                   env:
-                      - name: POD_ORDINAL
+                      - name: ORDINAL
                         valueFrom:
                             fieldRef:
-                                fieldPath: metadata.annotations['statefulset.kubernetes.io/pod-name']
+                                fieldPath: metadata.name
                       - name: MONGO_URL
-                        value: "mongodb-$(POD_ORDINAL).mongodb:27017"
-                      - name: PYTHONPATH
-                        value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing"
+                        value: "mongodb-${ORDINAL##*-}.mongodb:27017"
                 - name: kafka-services
                   image: matiaspaavilainen/distributed-systems:kafka_services
                   imagePullPolicy: Always
                   env:
-                      - name: POD_ORDINAL
+                      - name: ORDINAL
                         valueFrom:
                             fieldRef:
-                                fieldPath: metadata.annotations['statefulset.kubernetes.io/pod-name']
+                                fieldPath: metadata.name
                       - name: KAFKA_BROKER
-                        value: "kafka-$(POD_ORDINAL).kafka:9092"
-                      - name: PORT_BASE
-                        value: "30000"
-                      - name: PYTHONPATH
-                        value: "/app/consumer:/app/producer"
+                        value: "kafka-${ORDINAL##*-}.kafka:9092"
