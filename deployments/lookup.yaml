@@ -45,7 +45,8 @@ spec:
                             fieldRef:
                                 fieldPath: metadata.name
                       - name: KAFKA_BROKER
-                        value: "kafka-$(POD_NAME).kafka:9092"  # Local broker address
+                        # Extract the number from lookup-N and use it for kafka-N
+                        value: "kafka-$(echo ${POD_NAME} | grep -o '[0-9]*').kafka:9092"
                       - name: PYTHONPATH
                         value: "/app/consumer:/app/producer"
 ---
