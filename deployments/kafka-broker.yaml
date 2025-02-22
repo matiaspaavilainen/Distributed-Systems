@@ -11,6 +11,9 @@ rules:
     - apiGroups: [""]
       resources: ["nodes"]
       verbs: ["get", "list", "patch"]
+    - apiGroups: [""]
+      resources: ["pods"] # Add pod permissions
+      verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -50,8 +53,11 @@ spec:
                       - /bin/sh
                       - -c
                       - |
-                          NODE=$(kubectl get pod ${POD_NAME} -o=jsonpath='{.spec.nodeName}')
-                          kubectl label node $NODE kafka-ordinal=${ORDINAL} --overwrite
+                          POD_NAME=$(hostname)
+                          NODE=$(kubectl get pod $POD_NAME -n default -o=jsonpath='{.spec.nodeName}')
+                          ORDINAL=${POD_NAME##*-}  # Extract number from pod name
+                          echo "Labeling node $NODE with kafka-ordinal=kafka-$ORDINAL"
+                          kubectl label node $NODE kafka-ordinal=kafka-$ORDINAL --overwrite
                   env:
                       - name: POD_NAME
                         valueFrom:
