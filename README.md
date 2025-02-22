@@ -168,8 +168,8 @@ stern --version
 
     ```bash
     kubectl apply -f deployments/zookeeper.yaml
-    kubectl wait --for=condition=ready pod -l app=zookeeper
-
+    
+    # wait
     kubectl apply -f deployments/kafka-broker.yaml
     ```
 
@@ -186,7 +186,8 @@ stern --version
     kubectl apply -f deployments/server-deployment.yaml
     kubectl apply -f deployments/proxy-nodes.yaml
     kubectl apply -f deployments/lookup.yaml
-    kubectl wait --for=condition=ready pod -l app=lookup
+    
+    #wait
     kubectl apply -f deployments/gateway.yaml
     ```
 
@@ -238,6 +239,77 @@ stern --version
     # NAT with port forwarding: Use localhost
     curl http://localhost:30404/resource/John%20Williams
 
+### PROMETHEUS
+
+1. **Install helm**
+
+    ```bash
+    curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+    sudo apt-get install apt-transport-https --yes
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+    sudo apt-get update
+    sudo apt-get install helm
+    ```
+
+2. **Install prometheus**
+
+    ```bash
+    kubectl create namespace monitoring
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo update
+
+    # Create directories if not exist
+    sudo mkdir -p /mnt/prometheus-server
+    sudo chmod 777 /mnt/prometheus-server
+
+    # Get node name
+    NODE_NAME=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')
+
+    # Update node name in storage config
+    sed -i "s/YOUR_NODE_NAME/$NODE_NAME/g" deployments/prometheus-storage.yaml
+
+    # Apply new storage config
+    kubectl apply -f deployments/prometheus-storage.yaml
+
+    # Install Prometheus
+    helm install prometheus prometheus-community/prometheus \
+    --namespace monitoring \
+    --set alertmanager.enabled=false \
+    --set server.persistentVolume.storageClass=local-storage
+
+    kubectl expose service prometheus-server --namespace monitoring \
+    --type=NodePort --target-port=9090 --name=prometheus-server-ext
+
+    # Find the port of prometheus-server-ext with
+    kubectl get svc prometheus-server-ext -n monitoring -o jsonpath='{.spec.ports[0].nodePort}'
+
+    # Prometheus dashboard should now be available at
+    # http://VM_IP:prometheus-server-ext port
+    ```
+
+3. **Install grafana**
+
+    ```bash
+    helm repo add grafana https://grafana.github.io/helm-charts
+    helm repo update
+    helm install grafana grafana/grafana --namespace monitoring
+
+    kubectl expose service grafana --namespace monitoring --type=NodePort --target-port=3000 --name=grafana-ext
+    
+    # Find the port of grafana with
+    kubectl get svc grafana-ext -n monitoring -o jsonpath='{.spec.ports[0].nodePort}'
+
+    # Grafana should now be available at
+    # http://VM_IP:grafana-ext port
+
+    # get password for user "admin"
+    kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+
+    # Add the datasource
+    kubectl get svc prometheus-server-ext -n monitoring -o jsonpath='{.spec.ports[0].nodePort}'
+    # http://VM_IP:prometheus-server-ext port
+    ```
+
 ## Stopping and Restarting
 
 ### Shutdown
@@ -280,14 +352,15 @@ kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Doc
 
 # Redeploy components
 kubectl apply -f deployments/zookeeper.yaml
-kubectl wait --for=condition=ready pod -l app=zookeeper
+# wait
 kubectl apply -f deployments/kafka-broker.yaml
 kubectl apply -f deployments/mongodb-configmap.yaml
 kubectl apply -f deployments/mongodb-deployment.yaml
 kubectl apply -f deployments/server-deployment.yaml
 kubectl apply -f deployments/lookup.yaml
-kubectl wait --for=condition=ready pod -l app=lookup
+# wait
 kubectl apply -f deployments/gateway.yaml
+kubectl apply -f deployments/proxy-nodes.yaml
 kubectl apply -f node_manager/templates/rbac.yaml
 kubectl apply -f deployments/node-manager.yaml
 
