@@ -1,9 +1,7 @@
 // COPY THIS TO THE CONFIGMAP IF CHANGED
 
 // Only initialize if this is mongodb-0 (control plane)
-const hostname = require('system').hostname;
-
-if (hostname().endsWith('-0')) {
+if (db.getMongo().toString().includes('-0')) {
     // First, create the database
     db = db.getSiblingDB('SAND');
 
