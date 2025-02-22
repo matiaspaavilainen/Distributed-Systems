@@ -22,6 +22,10 @@ spec:
                           operator: In
                           values:
                           - kafka
+                        - key: statefulset.kubernetes.io/pod-name
+                          operator: In
+                          values:
+                          - kafka-$(metadata.annotations['statefulset.kubernetes.io/pod-index'])
                       topologyKey: kubernetes.io/hostname
             containers:
                 - name: lookup
@@ -40,16 +44,12 @@ spec:
                   env:
                       - name: PORT_BASE
                         value: "30000"
-                      - name: NODE_NAME
+                      - name: KAFKA_BROKER
+                        value: "kafka-$(POD_ORDINAL).kafka:9092"
+                      - name: POD_ORDINAL
                         valueFrom:
                             fieldRef:
-                                fieldPath: spec.nodeName
-                      - name: KAFKA_BROKER
-                        # Use a script to find the kafka pod on the same node
-                        valueFrom:
-                            configMapKeyRef:
-                                name: kafka-finder
-                                key: script
+                                fieldPath: metadata.annotations['statefulset.kubernetes.io/pod-index']
                       - name: PYTHONPATH
                         value: "/app/consumer:/app/producer"
 ---
