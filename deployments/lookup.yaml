@@ -38,12 +38,12 @@ spec:
                   image: matiaspaavilainen/distributed-systems:lookup_service
                   imagePullPolicy: Always
                   env:
-                      - name: ORDINAL
+                      - name: POD_NAME
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.name
                       - name: MONGO_URL
-                        value: "mongodb-${ORDINAL##*-}.mongodb:27017"
+                        value: "mongodb-$(POD_NAME).mongodb:27017"
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing/"
                 - name: kafka-services
@@ -54,9 +54,9 @@ spec:
                         value: "30000"
                       - name: PYTHONPATH
                         value: "/app/consumer:/app/producer"
-                      - name: ORDINAL
+                      - name: POD_NAME
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.name
                       - name: KAFKA_BROKER
-                        value: "kafka-${ORDINAL##*-}.kafka:9092"
+                        value: "kafka-$(POD_NAME).kafka:9092"
