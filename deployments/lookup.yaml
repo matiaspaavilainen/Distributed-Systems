@@ -30,10 +30,6 @@ spec:
                   ports:
                     - containerPort: 50051  # gRPC port for peer communication
                   env:
-                      - name: POD_NAME
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.name
                       - name: MONGO_URL
                         value: "mongodb://root:example@mongodb-node-service:27017"
                       - name: PYTHONPATH
@@ -44,6 +40,10 @@ spec:
                   env:
                       - name: PORT_BASE
                         value: "30000"
+                      - name: POD_NAME
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.name
                       - name: KAFKA_BROKER
                         value: "kafka-$(POD_NAME).kafka:9092"  # Local broker address
                       - name: PYTHONPATH
