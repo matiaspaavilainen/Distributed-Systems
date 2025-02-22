@@ -1,4 +1,4 @@
-apiVersion: storage.k8s.io/v1
+# SetuapiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: local-storage
@@ -8,15 +8,15 @@ volumeBindingMode: WaitForFirstConsumer
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: pvc-prometheus-server
+  name: storage-prometheus-alertmanager-0
 spec:
   capacity:
-    storage: 8Gi
+    storage: 2Gi
   accessModes:
     - ReadWriteOnce
   storageClassName: local-storage
   local:
-    path: /mnt/prometheus-server
+    path: /mnt/prometheus-alertmanager
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -29,15 +29,15 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: pvc-prometheus-alertmanager
+  name: prometheus-server
 spec:
   capacity:
-    storage: 2Gi
+    storage: 8Gi
   accessModes:
     - ReadWriteOnce
   storageClassName: local-storage
   local:
-    path: /mnt/prometheus-alertmanager
+    path: /mnt/prometheus-server
   nodeAffinity:
     required:
       nodeSelectorTerms:
