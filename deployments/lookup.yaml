@@ -18,10 +18,21 @@ spec:
                     requiredDuringSchedulingIgnoredDuringExecution:
                         nodeSelectorTerms:
                             - matchExpressions:
-                                  - key: kafka-ordinal # Match with node labeled by Kafka
+                                  - key: node-role.kubernetes.io/control-plane
+                                    operator: Exists
+                                  - key: kafka-ordinal
                                     operator: In
                                     values:
-                                        - "${HOSTNAME##*-}" # Extract ordinal from pod name
+                                        - "0" # Match control-plane with kafka-0
+                            - matchExpressions:
+                                  - key: node-role.kubernetes.io/worker
+                                    operator: Exists
+                                  - key: kafka-ordinal
+                                    operator: In
+                                    values:
+                                        - "1" # Match workers with kafka-1,2,3
+                                        - "2"
+                                        - "3"
             containers:
                 - name: lookup
                   image: matiaspaavilainen/distributed-systems:lookup_service
