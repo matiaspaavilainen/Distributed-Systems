@@ -3,4 +3,4 @@ kind: ConfigMap
 metadata:
   name: kafka-finder
 data:
-  script: kubectl get pods -l app=kafka --field-selector spec.nodeName=${NODE_NAME} --no-headers -o custom-columns=":metadata.name" | cut -d'-' -f2
+  script: kubectl get pods -l app=kafka --field-selector spec.nodeName=${NODE_NAME} --no-headers -o custom-columns=":metadata.name" | grep -o '[0-9]*'
