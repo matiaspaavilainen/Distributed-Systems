@@ -13,29 +13,16 @@ spec:
             labels:
                 app: lookup
         spec:
-            affinity:
-                podAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                    - labelSelector:
-                        matchExpressions:
-                        - key: app
-                          operator: In
-                          values:
-                          - kafka
-                        - key: statefulset.kubernetes.io/pod-name
-                          operator: In
-                          values:
-                          - kafka-$(metadata.annotations['statefulset.kubernetes.io/pod-index'])
-                      topologyKey: kubernetes.io/hostname
+            hostNetwork: true # Add host networking
             containers:
                 - name: lookup
                   image: matiaspaavilainen/distributed-systems:lookup_service
                   imagePullPolicy: Always
                   ports:
-                    - containerPort: 50051  # gRPC port for peer communication
+                      - containerPort: 50051
                   env:
                       - name: MONGO_URL
-                        value: "mongodb://root:example@mongodb-node-service:27017"
+                        value: "mongodb://root:example@localhost:27017" # Changed to localhost
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing"
                 - name: kafka-services
@@ -44,24 +31,5 @@ spec:
                   env:
                       - name: PORT_BASE
                         value: "30000"
-                      - name: KAFKA_BROKER
-                        value: "kafka-$(POD_ORDINAL).kafka:9092"
-                      - name: POD_ORDINAL
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.annotations['statefulset.kubernetes.io/pod-index']
                       - name: PYTHONPATH
                         value: "/app/consumer:/app/producer"
----
-apiVersion: v1
-kind: Service
-metadata:
-    name: lookup
-spec:
-    clusterIP: None  # Headless service for StatefulSet DNS
-    selector:
-        app: lookup
-    ports:
-        - name: grpc
-          port: 50051
-          targetPort: 50051
