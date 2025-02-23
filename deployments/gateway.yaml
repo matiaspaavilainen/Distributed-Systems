@@ -11,11 +11,19 @@ spec:
         metadata:
             labels:
                 app: gateway
+            annotations:
+                prometheus.io/scrape: "true"
+                prometheus.io/port: "40404"
+                prometheus.io/path: "/metrics"
         spec:
             containers:
                 - name: gateway
                   image: matiaspaavilainen/distributed-systems:gateway
                   imagePullPolicy: Always
+                  ports:
+                      - containerPort: 40404
+                      - containerPort: 9090
+                        name: metrics
                   env:
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer"
