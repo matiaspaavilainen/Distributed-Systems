@@ -13,7 +13,7 @@ spec:
                 app: gateway
             annotations:
                 prometheus.io/scrape: "true"
-                prometheus.io/port: "9090"
+                prometheus.io/port: "40404"
                 prometheus.io/path: "/metrics"
         spec:
             containers:
