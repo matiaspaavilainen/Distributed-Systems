@@ -7,11 +7,12 @@
 1. 4x Ubuntu 22.04 VM
 2. sudo privileges
 
-### Clone Repository (on the VM)
-
 ### Only do these 2 for the control VM
 
+### Clone Repository (on the VM)
+
 ```bash
+# only on control
 git clone https://github.com/matiaspaavilainen/Distributed-Systems.git
 cd Distributed-Systems
 git checkout containerization
@@ -20,6 +21,7 @@ git checkout containerization
 ### Install Stern (for log viewing)
 
 ```bash
+# only on control
 # Download stern binary
 STERN_VERSION=1.28.0
 wget https://github.com/stern/stern/releases/download/v${STERN_VERSION}/stern_${STERN_VERSION}_linux_amd64.tar.gz
