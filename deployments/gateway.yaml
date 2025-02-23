@@ -13,17 +13,13 @@ spec:
                 app: gateway
             annotations:
                 prometheus.io/scrape: "true"
-                prometheus.io/port: "9090"
+                prometheus.io/port: "30404"
                 prometheus.io/path: "/metrics"
         spec:
             containers:
                 - name: gateway
                   image: matiaspaavilainen/distributed-systems:gateway
                   imagePullPolicy: Always
-                  ports:
-                      - containerPort: 40404
-                      - containerPort: 9090
-                        name: metrics
                   env:
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer"
@@ -42,19 +38,12 @@ kind: Service
 metadata:
     name: gateway
     namespace: default
-    labels:
-        app: gateway
 spec:
     selector:
         app: gateway
     ports:
-        - name: gateway
-          protocol: TCP
+        - protocol: TCP
           port: 40404
           targetPort: 40404
           nodePort: 30404
-        - name: metrics
-          protocol: TCP
-          port: 9090
-          targetPort: 40404 # The port where metrics are actually served
     type: NodePort
