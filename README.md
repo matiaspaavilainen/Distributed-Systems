@@ -15,7 +15,7 @@
 # only on control
 git clone https://github.com/matiaspaavilainen/Distributed-Systems.git
 cd Distributed-Systems
-git checkout containerization
+git checkout multi-vm
 ```
 
 ### Install Stern (for log viewing)
