@@ -13,7 +13,7 @@ spec:
                 app: gateway
             annotations:
                 prometheus.io/scrape: "true"
-                prometheus.io/port: "40404"
+                prometheus.io/port: "9090"
                 prometheus.io/path: "/metrics"
         spec:
             containers:
@@ -42,12 +42,19 @@ kind: Service
 metadata:
     name: gateway
     namespace: default
+    labels:
+        app: gateway
 spec:
     selector:
         app: gateway
     ports:
-        - protocol: TCP
+        - name: gateway
+          protocol: TCP
           port: 40404
           targetPort: 40404
           nodePort: 30404
+        - name: metrics
+          protocol: TCP
+          port: 9090
+          targetPort: 40404 # The port where metrics are actually served
     type: NodePort
