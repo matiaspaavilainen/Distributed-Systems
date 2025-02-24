@@ -68,18 +68,10 @@ spec:
                         value: localhost:2181
                       - name: ALLOW_PLAINTEXT_LISTENER
                         value: "yes"
-                      - name: KAFKA_CFG_BROKER_ID
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.ordinal # Use StatefulSet pod ordinal as broker ID
-                      - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
-                        value: "PLAINTEXT:PLAINTEXT"
                       - name: KAFKA_CFG_LISTENERS
-                        value: "PLAINTEXT://:9092"
+                        value: PLAINTEXT://:9092
                       - name: KAFKA_CFG_ADVERTISED_LISTENERS
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.name # Use pod name for advertised listener
+                        value: PLAINTEXT://$(POD_NAME):9092
                 # MONGODB
                 - name: mongodb
                   image: mongo:latest
