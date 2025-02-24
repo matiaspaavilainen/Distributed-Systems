@@ -5,7 +5,7 @@ metadata:
     labels:
         app: worker
 spec:
-    serviceName: worker
+    serviceName: worker-headless
     replicas: 3
     selector:
         matchLabels:
@@ -71,7 +71,7 @@ spec:
                       - name: KAFKA_CFG_LISTENERS
                         value: PLAINTEXT://:9092
                       - name: KAFKA_CFG_ADVERTISED_LISTENERS
-                        value: PLAINTEXT://$(POD_NAME):9092
+                        value: PLAINTEXT://$(POD_NAME).worker-headless:9092
                 # MONGODB
                 - name: mongodb
                   image: mongo:latest
@@ -142,3 +142,16 @@ spec:
           port: 50051
           targetPort: 50051
     type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: worker-headless
+spec:
+    clusterIP: None
+    selector:
+        app: worker
+    ports:
+        - name: kafka
+          port: 9092
+          targetPort: 9092
