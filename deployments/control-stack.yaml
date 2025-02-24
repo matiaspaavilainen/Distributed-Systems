@@ -22,22 +22,13 @@ spec:
                                   - key: node-role.kubernetes.io/control-plane
                                     operator: Exists
             initContainers:
-                - name: wait-for-zookeeper
-                  image: busybox
-                  command:
-                      [
-                          "sh",
-                          "-c",
-                          "until nc -z localhost 2181; do echo waiting for zookeeper; sleep 2; done;",
-                      ]
-
                 - name: wait-for-kafka
                   image: busybox
                   command:
                       [
                           "sh",
                           "-c",
-                          "until (nc -z localhost 2181 && nc -z localhost 9092); do echo waiting for kafka; sleep 2; done;",
+                          "until nc -z localhost 9092; do echo waiting for kafka; sleep 2; done;",
                       ]
 
                 - name: wait-for-lookup
@@ -46,13 +37,18 @@ spec:
                       [
                           "sh",
                           "-c",
-                          "until (nc -z localhost 2181 && nc -z localhost 9092 && nc -z localhost 50051); do echo waiting for lookup; sleep 2; done;",
+                          "until nc -z localhost 50051; do echo waiting for lookup; sleep 2; done;",
                       ]
             containers:
                 - name: zookeeper
                   image: bitnami/zookeeper:latest
                   ports:
                       - containerPort: 2181
+                  readinessProbe:
+                      tcpSocket:
+                          port: 2181
+                      initialDelaySeconds: 10
+                      periodSeconds: 5
                   env:
                       - name: ALLOW_ANONYMOUS_LOGIN
                         value: "yes"
@@ -61,9 +57,14 @@ spec:
                   image: bitnami/kafka:latest
                   ports:
                       - containerPort: 9092
+                  readinessProbe:
+                      tcpSocket:
+                          port: 9092
+                      initialDelaySeconds: 15
+                      periodSeconds: 5
                   env:
                       - name: KAFKA_CFG_ZOOKEEPER_CONNECT
-                        value: zookeeper:2181
+                        value: localhost:2181
                       - name: ALLOW_PLAINTEXT_LISTENER
                         value: "yes"
                       - name: KAFKA_CFG_LISTENERS
