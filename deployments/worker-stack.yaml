@@ -113,14 +113,8 @@ spec:
                   image: matiaspaavilainen/distributed-systems:node_manager
                   imagePullPolicy: Always
                   readinessProbe:
-                      exec:
-                          command:
-                              - bash
-                              - -c
-                              - |
-                                  timeout 1 bash -c '</dev/tcp/localhost/9092' && \
-                                  timeout 1 bash -c '</dev/tcp/localhost/27017' && \
-                                  timeout 1 bash -c '</dev/tcp/localhost/50051'
+                      tcpSocket:
+                          port: 50051
                       initialDelaySeconds: 30
                       periodSeconds: 5
                       failureThreshold: 6
