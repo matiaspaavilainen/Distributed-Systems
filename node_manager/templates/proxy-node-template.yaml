@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-    name: proxy-node-{id}
+    name: proxy-node-{worker_num}-{id}
 spec:
     replicas: 1
     selector:
@@ -13,7 +13,7 @@ spec:
             labels:
                 app: proxy-node
                 instance: "{id}"
-            name: proxy-node-{id}
+            name: proxy-node-{worker_num}-{id}
         spec:
             # Keep proxy nodes with their manager
             podAffinity:
@@ -72,7 +72,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-    name: proxy-node-{id}-grpc
+    name: proxy-node-{worker_num}-{id} -grpc
 spec:
     type: NodePort
     selector:
@@ -89,7 +89,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-    name: proxy-node-{id}-http
+    name: proxy-node-{worker_num}-{id} -http
 spec:
     type: ClusterIP
     selector:
