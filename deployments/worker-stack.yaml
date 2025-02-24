@@ -115,12 +115,12 @@ spec:
                   readinessProbe:
                       exec:
                           command:
-                              - sh
+                              - bash
                               - -c
                               - |
-                                  nc -z localhost 9092 && \  # Check Kafka
-                                  nc -z localhost 27017 && \ # Check MongoDB
-                                  nc -z localhost 50051      # Check Lookup service
+                                  timeout 1 bash -c '</dev/tcp/localhost/9092' && \
+                                  timeout 1 bash -c '</dev/tcp/localhost/27017' && \
+                                  timeout 1 bash -c '</dev/tcp/localhost/50051'
                       initialDelaySeconds: 30
                       periodSeconds: 5
                       failureThreshold: 6
