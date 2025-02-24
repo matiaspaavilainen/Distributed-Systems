@@ -21,24 +21,6 @@ spec:
                             - matchExpressions:
                                   - key: node-role.kubernetes.io/control-plane
                                     operator: Exists
-            initContainers:
-                - name: wait-for-kafka
-                  image: busybox
-                  command:
-                      [
-                          "sh",
-                          "-c",
-                          "until nc -z localhost 9092; do echo waiting for kafka; sleep 2; done;",
-                      ]
-
-                - name: wait-for-lookup
-                  image: busybox
-                  command:
-                      [
-                          "sh",
-                          "-c",
-                          "until nc -z localhost 50051; do echo waiting for lookup; sleep 2; done;",
-                      ]
             containers:
                 - name: zookeeper
                   image: bitnami/zookeeper:latest
@@ -76,6 +58,11 @@ spec:
                   image: mongo:latest
                   ports:
                       - containerPort: 27017
+                  readinessProbe:
+                      tcpSocket:
+                          port: 27017
+                      initialDelaySeconds: 15
+                      periodSeconds: 5
                   env:
                       - name: MONGO_INITDB_ROOT_USERNAME
                         value: "root"
@@ -95,6 +82,11 @@ spec:
                 - name: lookup
                   image: matiaspaavilainen/distributed-systems:lookup_service
                   imagePullPolicy: Always
+                  readinessProbe:
+                      tcpSocket:
+                          port: 50051
+                      initialDelaySeconds: 25 # Wait for kafka
+                      periodSeconds: 5
                   env:
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing/"
@@ -114,6 +106,11 @@ spec:
                 - name: gateway
                   image: matiaspaavilainen/distributed-systems:gateway
                   imagePullPolicy: Always
+                  readinessProbe:
+                      tcpSocket:
+                          port: 40404
+                      initialDelaySeconds: 30 # Wait for lookup
+                      periodSeconds: 5
                   env:
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer"
