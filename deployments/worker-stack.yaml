@@ -150,7 +150,7 @@ metadata:
     name: worker-0
 spec:
     selector:
-        app: kafka
+        app: worker
     ports:
         - protocol: TCP
           port: 9092
@@ -163,7 +163,7 @@ metadata:
     name: worker-1
 spec:
     selector:
-        app: kafka
+        app: worker
     ports:
         - protocol: TCP
           port: 9092
@@ -176,7 +176,7 @@ metadata:
     name: worker-2
 spec:
     selector:
-        app: kafka
+        app: worker
     ports:
         - protocol: TCP
           port: 9092
