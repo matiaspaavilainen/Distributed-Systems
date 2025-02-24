@@ -4,7 +4,7 @@ metadata:
     name: node-manager-account
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
     name: node-manager-role
 rules:
@@ -14,12 +14,9 @@ rules:
     - apiGroups: [""]
       resources: ["services"]
       verbs: ["create", "delete", "get", "list", "watch"]
-    - apiGroups: ["networking.k8s.io"]
-      resources: ["ingresses"]
-      verbs: ["create", "delete", "get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
     name: node-manager-role-binding
 subjects:
@@ -27,6 +24,6 @@ subjects:
       name: node-manager-account
       namespace: default
 roleRef:
-    kind: Role
+    kind: ClusterRole
     name: node-manager-role
     apiGroup: rbac.authorization.k8s.io
