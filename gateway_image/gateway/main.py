@@ -10,7 +10,7 @@ from fastapi.responses import RedirectResponse
 from kafka_messaging.consumer import consumer_pb2, consumer_pb2_grpc
 
 # Constants
-CONSUMER_PORT = 30052
+CONSUMER_PORT = int(os.getenv("KAFKA_SERVICE_PORT")) + 2
 PORT = 40404
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
 DEBUG = True

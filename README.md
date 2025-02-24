@@ -4,8 +4,7 @@
 
 ### Prerequisites
 
-1. 4x Ubuntu 22.04 VM
-2. sudo privileges
+4x Ubuntu 22.04 VM with 2xCPU, 2gb RAM, 10gb storage
 
 ### Only do these 2 for the control VM
 
@@ -23,11 +22,10 @@ git checkout multi-vm
 ```bash
 # only on control
 # Download stern binary
-STERN_VERSION=1.28.0
-wget https://github.com/stern/stern/releases/download/v${STERN_VERSION}/stern_${STERN_VERSION}_linux_amd64.tar.gz
+wget https://github.com/stern/stern/releases/download/v1.32.0/stern_1.32.0_linux_amd64.tar.gz
 
 # Extract the binary
-tar -xf stern_${STERN_VERSION}_linux_amd64.tar.gz
+tar -xf stern_1.32.0_linux_amd64.tar.gz
 
 # Move to PATH
 sudo mv stern /usr/local/bin/
@@ -157,61 +155,37 @@ stern --version
     # Get node names
     kubectl get nodes
 
-    # Label control-plane node (replace <control-plane-name> with actual node name)
-
-    kubectl label node <control-plane-name> kafka-ordinal=0 node-role.kubernetes.io/control-plane=true
-
     # Label worker nodes (replace <worker-X-name> with actual node names)
 
-    kubectl label node <worker1-name> kafka-ordinal=1 node-role.kubernetes.io/worker=true
-    kubectl label node <worker2-name> kafka-ordinal=2 node-role.kubernetes.io/worker=true
-    kubectl label node <worker3-name> kafka-ordinal=3 node-role.kubernetes.io/worker=true
+    kubectl label node <worker1-name> node-role.kubernetes.io/worker=true
+    kubectl label node <worker2-name> node-role.kubernetes.io/worker=true
+    kubectl label node <worker3-name> node-role.kubernetes.io/worker=true
 
     # Verify labels
 
-    kubectl get nodes --show-labels | grep -E "kafka-ordinal|kubernetes.io/role"
+    kubectl get nodes
     ```
 
 ### Deploy Application Components
 
-1. **Deploy Kafka Infrastructure**
+1. **Deploy control stack**
 
     ```bash
-    # Deploy Zookeeper first
-    kubectl apply -f deployments/zookeeper.yaml
-    kubectl wait --for=condition=ready pod -l app=zookeeper
-
-    # Then deploy Kafka
-    kubectl apply -f deployments/kafka-broker.yaml
-    kubectl wait --for=condition=ready pod -l app=kafka
-    ```
-
-2. **Deploy Core Services**
-
-    ```bash
-    # Deploy MongoDB first
     kubectl apply -f deployments/mongodb-configmap.yaml
-    kubectl apply -f deployments/mongodb-deployment.yaml
-    kubectl wait --for=condition=ready pod -l app=mongodb-node
-
-    # Then deploy lookup service
-    kubectl apply -f deployments/lookup.yaml
-    kubectl wait --for=condition=ready pod -l app=lookup
-
-    # Deploy remaining services
-    kubectl apply -f deployments/server-deployment.yaml
-    kubectl apply -f deployments/proxy-nodes.yaml
-    kubectl apply -f deployments/gateway.yaml
+    kubectl apply -f deployments/proxy-node-balancer.yaml
+    kubectl apply -f deployments/control-stack.yaml
     ```
 
-3. **Deploy Node Manager**
+2. **Deploy worker stack**
 
     ```bash
+    kubectl get pods -o wide
+    # Wait for control plane to start completely
     kubectl apply -f node_manager/templates/rbac.yaml
-    kubectl apply -f deployments/node-manager.yaml
+    kubectl apply -f deployments/worker-stack.yaml
     ```
 
-4. **Verify Deployment**
+3. **Verify Deployment**
 
     ```bash
     # Check gateway logs with stern

@@ -14,17 +14,23 @@ from kafka_messaging.producer import producer_pb2, producer_pb2_grpc
 from grpc_sharing.grpc_sharing import broadcast_to_peers, start_grpc_server
 
 # Constants
-CONSUMER_PORT = 30002
-PRODUCER_PORT = 30003
+kafka_port = int(os.getenv("KAFKA_SERVICE_PORT"))
+CONSUMER_PORT = kafka_port + 2
+PRODUCER_PORT = kafka_port + 3
+
 NODE_UPDATES_TOPIC = "node-updates"
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
 LOOKUP_TABLE_TOPIC = "lookup-table"
-pod_name = os.getenv("POD_NAME")
-ordinal = pod_name.split("-")[-1]  # Extract number from end of pod name
-MONGO_URL = f"mongodb://root:example@mongodb-{ordinal}.mongodb:27017"
+
+MONGO_URL = "mongodb://root:example@localhost:27017"
 
 # should be changed to be dynamic at some point
-PEER_LOOKUPS = ["lookup-0:50051", "lookup-1:50051", "lookup-2:50051", "lookup-3:50051"]
+PEER_LOOKUPS = [
+    "lookup-service-control:50051",
+    "lookup-service-0:50051",
+    "lookup-service-1:50051",
+    "lookup-service-2:50051",
+]
 GRPC_PORT = 50051
 
 # Global variables

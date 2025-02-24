@@ -59,3 +59,16 @@ spec:
                                 fieldPath: metadata.name
                       - name: KAFKA_BROKER
                         value: "kafka-$(POD_NAME).kafka:9092"
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: lookup-service
+spec:
+    selector:
+        app: control
+    ports:
+        - protocol: TCP
+          port: 50051
+          targetPort: 50051
+    type: ClusterIP

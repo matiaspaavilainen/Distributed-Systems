@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-    name: proxy-node-{worker_num}- {id}
+    name: proxy-node-{worker_num}-{id}
 spec:
     replicas: 1
     selector:
@@ -25,10 +25,6 @@ spec:
                                     operator: In
                                     values:
                                         - worker
-                                  - key: statefulset.kubernetes.io/pod-name
-                                    operator: In
-                                    values:
-                                        - { pod_name }
                           topologyKey: kubernetes.io/hostname
             containers:
                 - name: proxy-node
@@ -66,7 +62,7 @@ spec:
                         value: "/app:/app/consumer:/app/producer"
                       - name: PORT_BASE
                         value: "{base_port}"
-                      - name: POD_NAME
+                      - name: NODE_IP
                         value: "{pod_name}"
 ---
 # Internal service for gRPC

@@ -36,20 +36,19 @@ def start_producer(port, kafka_broker):
     producer_service.serve(port, stop_event, kafka_broker)
 
 
-def main(base_port, pod_name):
+def main(base_port, broker):
     global consumer_thread, producer_thread
 
     signal.signal(signal.SIGTERM, shutdown_gracefully)
 
-    ordinal = pod_name.split("-")[-1]  # Extract number from end of pod name
-    kafka_broker = f"kafka-{ordinal}.kafka:9092"
+    kafka_broker = f"{broker}:9092"
 
     consumer_port = base_port + 2
     producer_port = base_port + 3
 
     print(f"Started consumer on port: {consumer_port}")
     print(f"Started producer on port: {producer_port}")
-    print(f"Using Kafka broker: {kafka_broker}")
+    print(f"Using broker: {kafka_broker}")
 
     consumer_thread = threading.Thread(
         target=start_consumer, args=(consumer_port, kafka_broker)
@@ -71,5 +70,7 @@ def main(base_port, pod_name):
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT_BASE"))
-    pod_name = os.getenv("POD_NAME")
-    main(port, pod_name)
+    broker = os.getenv("NODE_IP")
+    if not broker or not port:
+        raise ValueError("NODE_IP or PORT environment variable not set")
+    main(port, broker)

@@ -23,14 +23,11 @@ import grpc_server_SAND
 # Constants
 DEBUG = True
 VM_IP = os.getenv("VM_IP")
-# Use Kubernetes service discovery for main server
-MAIN_SERVER_ADDRESS = os.getenv(
-    "MAIN_SERVER_ADDRESS",
-    "server-service.default.svc.cluster.local:40002",  # Internal cluster DNS
-)
+POD_NAME = os.getenv("POD_NAME")
+MAIN_SERVER_ADDRESS = os.getenv("MAIN_SERVER_ADDRESS")
 
 # Use local MongoDB on worker node
-MONGO_URL = "mongodb://root:example@mongodb-node-service:27017"
+MONGO_URL = "mongodb://root:example@localhost:27017"
 
 # Topics
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
@@ -130,30 +127,16 @@ def find_item_from_any_db(query):
 
 def get_node_address():
     """Get the node's address with VM IP for both internal and external access"""
-    pod_name = os.getenv("POD_NAME")
-    vm_ip = os.getenv("VM_IP", "localhost")
-
-    if not pod_name:
+    if not POD_NAME:
         raise RuntimeError("POD_NAME environment variable not set")
 
     try:
-        node_id = pod_name.split("-")[2]
+        node_id = POD_NAME.split("-")[2]
         grpc_nodeport = 30100 + int(node_id)  # Match the new nodeport scheme
     except IndexError:
-        raise RuntimeError(f"Unexpected pod name format: {pod_name}")
+        raise RuntimeError(f"Unexpected pod name format: {POD_NAME}")
 
-    return f"{vm_ip}:30080:{grpc_nodeport}:{node_id}"
-
-
-def test_server_connection():
-    try:
-        with grpc.insecure_channel(MAIN_SERVER_ADDRESS) as channel:
-            grpc.channel_ready_future(channel).result(timeout=5)
-            print(f"Successfully connected to {MAIN_SERVER_ADDRESS}")
-            return True
-    except Exception as e:
-        print(f"Failed to connect to {MAIN_SERVER_ADDRESS}: {e}")
-        return False
+    return f"{VM_IP}:30080:{grpc_nodeport}:{node_id}"
 
 
 def start_http_server(port):
@@ -194,9 +177,6 @@ def main(port):
     db = client[db_name]
     collection = db["users"]
     collection.drop()
-
-    if DEBUG:
-        test_server_connection()
 
     # need to wait for kafka to have started
     time.sleep(5)

@@ -23,7 +23,7 @@ def initialize_k8s():
 # prometheus-prometheus-pushgateway.monitoring.svc.cluster.local:9091
 
 
-def fill_template(template, node_id, ports):
+def fill_template(template, node_id, ports, node_ip):
     """Fill template with node ID and port values"""
     filled = copy.deepcopy(template)
 
@@ -33,21 +33,33 @@ def fill_template(template, node_id, ports):
                 if isinstance(v, (dict, list)):
                     replace_values(v)
                 elif isinstance(v, str):
-                    if "{id}" in v:
-                        obj[k] = v.replace("{id}", str(node_id))
-                    for port_key, port_value in ports.items():
-                        if "{" + port_key + "}" in v:
-                            # Convert to int for port-related fields
-                            if (
-                                k == "containerPort"
-                                or k == "port"
-                                or k == "targetPort"
-                                or k == "number"
-                                or k == "nodePort"
-                            ):
-                                obj[k] = int(port_value)
-                            else:
-                                obj[k] = str(port_value)
+                    # Use format-style string replacement
+                    worker_num = node_ip.split("-")[1] if "{worker_num}" in v else None
+
+                    # Create a mapping of replacements
+                    replacements = {
+                        "id": str(node_id),
+                        "worker_num": worker_num,
+                        "node_ip": node_ip,
+                    }
+
+                    # Add port replacements
+                    replacements.update(ports)
+
+                    try:
+                        # Replace all placeholders using string formatting
+                        new_value = v.format(**replacements)
+
+                        # Convert to proper type for port values
+                        if k in ["containerPort", "port", "targetPort", "nodePort"]:
+                            if any(port_key in v for port_key in ports.keys()):
+                                new_value = int(new_value)
+
+                        obj[k] = new_value
+                    except KeyError:
+                        # Skip if the placeholder doesn't need to be replaced
+                        pass
+
         elif isinstance(obj, list):
             for item in obj:
                 replace_values(item)
@@ -56,12 +68,15 @@ def fill_template(template, node_id, ports):
     return filled
 
 
-def create_node(k8s_apps, k8s_core, template, node_id, base_port=50060):
+def create_node(k8s_apps, k8s_core, template, node_id, node_ip):
+    base_port = 50060
+    # Extract worker number from pod name (e.g., 'worker-1' -> 1)
+    worker_num = int(node_ip.split("-")[1])
+
     port_offset = node_id * 10
-    # Ensure NodePort is within valid range (30000-32767)
-    grpc_nodeport = (
-        30100 + node_id
-    )  # Starting from 30100 to leave room for other services
+    # Calculate unique NodePort: 30100 + (worker * 100) + node_id
+    # Example: worker-1, node 2 -> 30102
+    grpc_nodeport = 30100 + (worker_num * 100) + node_id
 
     ports = {
         "base_port": int(base_port + port_offset),
@@ -70,39 +85,45 @@ def create_node(k8s_apps, k8s_core, template, node_id, base_port=50060):
         "grpc_nodeport": grpc_nodeport,
     }
 
-    print(f"Creating node {node_id} with ports: {ports}")
+    print(f"Creating node {node_id} with ports: {ports} on {node_ip}")
 
     # Create deployment and services using filled templates
-    deployment = fill_template(template[0], node_id, ports)
+    deployment = fill_template(template[0], node_id, ports, node_ip)
     k8s_apps.create_namespaced_deployment(body=deployment, namespace="default")
 
-    grpc_service = fill_template(template[1], node_id, ports)
+    grpc_service = fill_template(template[1], node_id, ports, node_ip)
     k8s_core.create_namespaced_service(body=grpc_service, namespace="default")
 
-    http_service = fill_template(template[2], node_id, ports)
+    http_service = fill_template(template[2], node_id, ports, node_ip)
     k8s_core.create_namespaced_service(body=http_service, namespace="default")
 
 
-def delete_node(k8s_apps, k8s_core, node_id):
+def delete_node(k8s_apps, k8s_core, node_id, node_ip):
     """Delete a node and its services"""
-    print(f"Deleting node {node_id}...")
+    worker_num = int(node_ip.split("-")[1])
+    print(f"Deleting node {node_id} from worker {worker_num}...")
     try:
-        # Delete deployment
+        # Delete deployment with worker-specific name
         k8s_apps.delete_namespaced_deployment(
-            name=f"proxy-node-{node_id}", namespace="default"
+            name=f"proxy-node-{worker_num}-{node_id}", namespace="default"
         )
-        # Delete services
+        # Delete services with worker-specific names
         k8s_core.delete_namespaced_service(
-            name=f"proxy-node-{id}-grpc", namespace="default"
+            name=f"proxy-node-{worker_num}-{node_id}-grpc", namespace="default"
         )
         k8s_core.delete_namespaced_service(
-            name=f"proxy-node-{id}-http", namespace="default"
+            name=f"proxy-node-{worker_num}-{node_id}-http", namespace="default"
         )
     except Exception as e:
-        print(f"Error deleting node {node_id}: {e}")
+        print(f"Error deleting node {node_id} from worker {worker_num}: {e}")
 
 
 def main():
+    NODE_IP = os.getenv("NODE_IP")
+    if not NODE_IP:
+        raise ValueError("NODE_ID environment variable not set")
+    print(NODE_IP)
+
     template_path = "templates/proxy-node-template.yaml"
     if not os.path.exists(template_path):
         raise FileNotFoundError(f"Template file not found: {template_path}")
@@ -119,7 +140,7 @@ def main():
         stop_event.set()
         # Clean up nodes
         for i in range(NUM_NODES):
-            delete_node(k8s_apps, k8s_core, i)
+            delete_node(k8s_apps, k8s_core, i, NODE_IP)
         print("All nodes deleted")
 
     signal.signal(signal.SIGTERM, shutdown_gracefully)
@@ -129,8 +150,8 @@ def main():
     print(f"Starting node manager, creating {NUM_NODES} nodes...")
 
     for i in range(NUM_NODES):
-        create_node(k8s_apps, k8s_core, template, i)
-        print(f"Created node {i}")
+        create_node(k8s_apps, k8s_core, template, i, node_ip=NODE_IP)
+        print(f"Created node {i} on {NODE_IP}")
 
     print("All nodes created. Node ports:")
     for i in range(NUM_NODES):
