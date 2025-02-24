@@ -143,10 +143,35 @@ spec:
           targetPort: 50051
     type: ClusterIP
 ---
+# Hardcoded because doesnt work dynamically
 apiVersion: v1
 kind: Service
 metadata:
-    name: worker
+    name: worker-0
+spec:
+    selector:
+        app: kafka
+    ports:
+        - protocol: TCP
+          port: 9092
+          targetPort: 9092
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: worker-1
+spec:
+    selector:
+        app: kafka
+    ports:
+        - protocol: TCP
+          port: 9092
+          targetPort: 9092
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: worker-2
 spec:
     selector:
         app: kafka
