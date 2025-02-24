@@ -8,16 +8,18 @@ spec:
         matchLabels:
             app: proxy-node
             instance: "{id}"
+            worker: "{worker_num}"
     template:
         metadata:
             labels:
                 app: proxy-node
                 instance: "{id}"
                 worker: "{worker_num}"
-            name: proxy-node-{worker_num}-{id}
         spec:
+            env:
+                - name: WORKER_POD_NAME
+                  value: "{pod_name}"
             affinity:
-                # Keep proxy nodes with their manager
                 podAffinity:
                     requiredDuringSchedulingIgnoredDuringExecution:
                         - labelSelector:
@@ -25,50 +27,51 @@ spec:
                                   - key: app
                                     operator: In
                                     values:
-                                        - node-manager
+                                        - worker
                                   - key: statefulset.kubernetes.io/pod-name
                                     operator: In
                                     values:
-                                        - "{worker_id}" # Match StatefulSet pod name
+                                        # Does not work directly, so need to use intermediary env
+                                        - $(WORKER_POD_NAME) # Use env var reference
                           topologyKey: kubernetes.io/hostname
-                containers:
-                    - name: proxy-node
-                      image: matiaspaavilainen/distributed-systems:proxy_node
-                      imagePullPolicy: Always # REMOVE WHEN NO NEED TO CHANGE CODE
-                      ports:
-                          - name: http
-                            containerPort: "{http_port}"
-                          - name: grpc
-                            containerPort: "{grpc_port}"
-                      env:
-                          - name: POD_NAME
-                            valueFrom:
-                                fieldRef:
-                                    fieldPath: metadata.name
+            containers:
+                - name: proxy-node
+                  image: matiaspaavilainen/distributed-systems:proxy_node
+                  imagePullPolicy: Always # REMOVE WHEN NO NEED TO CHANGE CODE
+                  ports:
+                      - name: http
+                        containerPort: "{http_port}"
+                      - name: grpc
+                        containerPort: "{grpc_port}"
+                  env:
+                      - name: POD_NAME
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.name
 
-                          - name: VM_IP
-                            valueFrom:
-                                fieldRef:
-                                    fieldPath: status.hostIP
+                      - name: VM_IP
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: status.hostIP
 
-                          - name: PORT
-                            value: "{base_port}"
+                      - name: PORT
+                        value: "{base_port}"
 
-                          - name: MAIN_SERVER_ADDRESS
-                            value: "server-service:40002"
+                      - name: MAIN_SERVER_ADDRESS
+                        value: "server-service:40002"
 
-                          - name: PYTHONPATH
-                            value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_server"
-                    - name: kafka-services
-                      image: matiaspaavilainen/distributed-systems:kafka_services
-                      imagePullPolicy: Always
-                      env:
-                          - name: PYTHONPATH
-                            value: "/app:/app/consumer:/app/producer"
-                          - name: PORT_BASE
-                            value: "{base_port}"
-                          - name: POD_NAME
-                            value: "{worker_id}"
+                      - name: PYTHONPATH
+                        value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_server"
+                - name: kafka-services
+                  image: matiaspaavilainen/distributed-systems:kafka_services
+                  imagePullPolicy: Always
+                  env:
+                      - name: PYTHONPATH
+                        value: "/app:/app/consumer:/app/producer"
+                      - name: PORT_BASE
+                        value: "{base_port}"
+                      - name: POD_NAME
+                        value: "{pod_name}"
 ---
 # Internal service for gRPC
 apiVersion: v1
