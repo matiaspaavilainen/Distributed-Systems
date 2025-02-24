@@ -164,6 +164,8 @@ stern --version
 
 ### Deploy Application Components
 
+# RE-BUILD DOCKER IMAGES WITH CODE FROM THIS BRANCH
+
 1. **Deploy Kafka**
 
     ```bash
