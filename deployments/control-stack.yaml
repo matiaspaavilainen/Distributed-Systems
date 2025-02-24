@@ -1,0 +1,165 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: control
+    labels:
+        app: control
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: control
+    template:
+        metadata:
+            labels:
+                app: control
+        spec:
+            affinity:
+                nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                        nodeSelectorTerms:
+                            - matchExpressions:
+                                  - key: node-role.kubernetes.io/control-plane
+                                    operator: Exists
+            initContainers:
+                - name: wait-for-zookeeper
+                  image: busybox
+                  command:
+                      [
+                          "sh",
+                          "-c",
+                          "until nc -z localhost 2181; do echo waiting for zookeeper; sleep 2; done;",
+                      ]
+
+                - name: wait-for-kafka
+                  image: busybox
+                  command:
+                      [
+                          "sh",
+                          "-c",
+                          "until (nc -z localhost 2181 && nc -z localhost 9092); do echo waiting for kafka; sleep 2; done;",
+                      ]
+
+                - name: wait-for-lookup
+                  image: busybox
+                  command:
+                      [
+                          "sh",
+                          "-c",
+                          "until (nc -z localhost 2181 && nc -z localhost 9092 && nc -z localhost 50051); do echo waiting for lookup; sleep 2; done;",
+                      ]
+            containers:
+                - name: zookeeper
+                  image: bitnami/zookeeper:latest
+                  ports:
+                      - containerPort: 2181
+                  env:
+                      - name: ALLOW_ANONYMOUS_LOGIN
+                        value: "yes"
+
+                - name: kafka
+                  image: bitnami/kafka:latest
+                  ports:
+                      - containerPort: 9092
+                  env:
+                      - name: KAFKA_CFG_ZOOKEEPER_CONNECT
+                        value: zookeeper:2181
+                      - name: ALLOW_PLAINTEXT_LISTENER
+                        value: "yes"
+                      - name: KAFKA_CFG_LISTENERS
+                        value: PLAINTEXT://:9092
+                      - name: KAFKA_CFG_ADVERTISED_LISTENERS
+                        value: PLAINTEXT://localhost:9092
+
+                - name: mongodb
+                  image: mongo:latest
+                  ports:
+                      - containerPort: 27017
+                  env:
+                      - name: MONGO_INITDB_ROOT_USERNAME
+                        value: "root"
+                      - name: MONGO_INITDB_ROOT_PASSWORD
+                        value: "example"
+                  volumeMounts:
+                      - name: mongo-init
+                        mountPath: /docker-entrypoint-initdb.d
+
+                - name: server
+                  image: matiaspaavilainen/distributed-systems:main_server
+                  imagePullPolicy: Always
+                  ports:
+                      - containerPort: 40002
+                  env:
+                      - name: MONGO_URL
+                        value: "mongodb://root:example@localhost:27017"
+
+                # LOOKUP
+                - name: lookup
+                  image: matiaspaavilainen/distributed-systems:lookup_service
+                  imagePullPolicy: Always
+                  env:
+                      - name: PYTHONPATH
+                        value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing/"
+                      - name: KAFKA_SERVICE_PORT
+                        value: "2050"
+
+                - name: lookup-kafka-services
+                  image: matiaspaavilainen/distributed-systems:kafka_services
+                  imagePullPolicy: Always
+                  env:
+                      - name: PORT_BASE
+                        value: "2050"
+                      - name: PYTHONPATH
+                        value: "/app/consumer:/app/producer"
+
+                # GATEWAY
+                - name: gateway
+                  image: matiaspaavilainen/distributed-systems:gateway
+                  imagePullPolicy: Always
+                  env:
+                      - name: PYTHONPATH
+                        value: "/app:/app/kafka_messaging/consumer"
+                        # NEEDS TO MATCH THE KAFKA SERVICE PORT BELOW
+                      - name: KAFKA_SERVICE_PORT
+                        value: "2000"
+
+                - name: gateway-kafka-services
+                  image: matiaspaavilainen/distributed-systems:kafka_services
+                  imagePullPolicy: Always
+                  env:
+                      - name: PORT_BASE
+                        value: "2000"
+                      - name: PYTHONPATH
+                        value: "/app/consumer:/app/producer"
+
+            volumes:
+                - name: mongo-init
+                  configMap:
+                      name: mongo-init-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: server-service
+spec:
+    selector:
+        app: control
+    ports:
+        - protocol: TCP
+          port: 40002
+          targetPort: 40002
+    type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: zookeeper
+    labels:
+        app: zookeeper
+spec:
+    ports:
+        - port: 2181
+          targetPort: 2181
+    selector:
+        app: control
+    type: ClusterIP
