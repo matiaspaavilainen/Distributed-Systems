@@ -23,6 +23,12 @@ spec:
                             - matchExpressions:
                                   - key: node-role.kubernetes.io/worker
                                     operator: Exists
+                podAntiAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                        - labelSelector:
+                              matchLabels:
+                                  app: worker
+                          topologyKey: "kubernetes.io/hostname"
             containers:
                 # ZOOKEEPER
                 - name: zookeeper
