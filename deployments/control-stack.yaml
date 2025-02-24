@@ -35,6 +35,12 @@ spec:
                   env:
                       - name: ALLOW_ANONYMOUS_LOGIN
                         value: "yes"
+                      - name: ZOO_STANDALONE_ENABLED # Add standalone mode
+                        value: "yes"
+                      - name: ZOO_MAX_CLIENT_CNXNS # Limit connections
+                        value: "2"
+                      - name: ZOO_4LW_COMMANDS_WHITELIST # Allow basic commands
+                        value: "srvr,ruok,stat,mntr"
                 # KAFKA
                 - name: kafka
                   image: bitnami/kafka:latest

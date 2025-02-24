@@ -36,6 +36,12 @@ spec:
                   env:
                       - name: ALLOW_ANONYMOUS_LOGIN
                         value: "yes"
+                      - name: ZOO_STANDALONE_ENABLED
+                        value: "yes"
+                      - name: ZOO_MAX_CLIENT_CNXNS
+                        value: "2"
+                      - name: ZOO_4LW_COMMANDS_WHITELIST
+                        value: "srvr,ruok,stat,mntr"
                 # KAFKA
                 - name: kafka
                   image: bitnami/kafka:latest
