@@ -149,18 +149,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-    name: zookeeper
-spec:
-    selector:
-        app: control
-    ports:
-        - port: 2181
-          targetPort: 2181
-    type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
     name: lookup-service-control
 spec:
     selector:

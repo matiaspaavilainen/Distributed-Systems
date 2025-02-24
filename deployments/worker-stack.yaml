@@ -23,6 +23,19 @@ spec:
                                   - key: node-role.kubernetes.io/worker
                                     operator: Exists
             containers:
+                # ZOOKEEPER
+                - name: zookeeper
+                  image: bitnami/zookeeper:latest
+                  ports:
+                      - containerPort: 2181
+                  readinessProbe:
+                      tcpSocket:
+                          port: 2181
+                      initialDelaySeconds: 10
+                      periodSeconds: 5
+                  env:
+                      - name: ALLOW_ANONYMOUS_LOGIN
+                        value: "yes"
                 # KAFKA
                 - name: kafka
                   image: bitnami/kafka:latest
@@ -39,7 +52,7 @@ spec:
                             fieldRef:
                                 fieldPath: metadata.name
                       - name: KAFKA_CFG_ZOOKEEPER_CONNECT
-                        value: zookeeper:2181
+                        value: localhost:2181
                       - name: ALLOW_PLAINTEXT_LISTENER
                         value: "yes"
                       - name: KAFKA_CFG_LISTENERS
@@ -110,15 +123,3 @@ spec:
           port: 50051
           targetPort: 50051
     type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-    name: worker
-spec:
-    clusterIP: None # Headless service for StatefulSet DNS
-    selector:
-        app: worker
-    ports:
-        - port: 9092
-          name: kafka
