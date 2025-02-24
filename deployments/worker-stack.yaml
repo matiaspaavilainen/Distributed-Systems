@@ -142,17 +142,3 @@ spec:
           port: 50051
           targetPort: 50051
     type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-    # This will create services like worker-0, worker-1, worker-2
-    name: $(POD_NAME)
-spec:
-    type: ClusterIP
-    selector:
-        statefulset.kubernetes.io/pod-name: $(POD_NAME)
-    ports:
-        - name: kafka
-          port: 9092
-          targetPort: 9092
