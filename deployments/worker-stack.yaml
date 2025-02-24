@@ -151,6 +151,7 @@ metadata:
 spec:
     selector:
         app: worker
+        statefulset.kubernetes.io/pod-name: worker-0
     ports:
         - protocol: TCP
           port: 9092
@@ -164,6 +165,7 @@ metadata:
 spec:
     selector:
         app: worker
+        statefulset.kubernetes.io/pod-name: worker-1
     ports:
         - protocol: TCP
           port: 9092
@@ -177,6 +179,7 @@ metadata:
 spec:
     selector:
         app: worker
+        statefulset.kubernetes.io/pod-name: worker-2
     ports:
         - protocol: TCP
           port: 9092
