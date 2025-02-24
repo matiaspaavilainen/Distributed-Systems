@@ -112,6 +112,18 @@ spec:
                 - name: node-manager
                   image: matiaspaavilainen/distributed-systems:node_manager
                   imagePullPolicy: Always
+                  readinessProbe:
+                      exec:
+                          command:
+                              - sh
+                              - -c
+                              - |
+                                  nc -z localhost 9092 && \  # Check Kafka
+                                  nc -z localhost 27017 && \ # Check MongoDB
+                                  nc -z localhost 50051      # Check Lookup service
+                      initialDelaySeconds: 30
+                      periodSeconds: 5
+                      failureThreshold: 6
                   env:
                       - name: POD_NAME
                         valueFrom:
