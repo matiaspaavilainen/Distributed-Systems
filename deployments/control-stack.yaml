@@ -48,6 +48,26 @@ spec:
                           "-c",
                           "until (nc -z localhost 2181 && nc -z localhost 9092 && nc -z localhost 50051); do echo waiting for lookup; sleep 2; done;",
                       ]
+                - name: init-mongodb-replication
+                  image: mongo:latest
+                  command:
+                      - bash
+                      - -c
+                      - |
+                          echo "Waiting for MongoDB to start..."
+                          until mongosh --host localhost:27017 -u root -p example --eval "print('ready')"
+                          do
+                            sleep 2
+                          done
+                          echo "Initializing replica set..."
+                          mongosh --host localhost:27017 -u root -p example --eval '
+                            rs.initiate({
+                              _id: "rs0",
+                              members: [
+                                {_id: 0, host: "localhost:27017", priority: 1}
+                              ]
+                            })
+                          '
             containers:
                 - name: zookeeper
                   image: bitnami/zookeeper:latest
@@ -73,6 +93,12 @@ spec:
 
                 - name: mongodb
                   image: mongo:latest
+                  command:
+                      - mongod
+                      - "--replSet"
+                      - "rs0"
+                      - "--bind_ip"
+                      - "localhost,127.0.0.1"
                   ports:
                       - containerPort: 27017
                   env:
@@ -89,9 +115,6 @@ spec:
                   imagePullPolicy: Always
                   ports:
                       - containerPort: 40002
-                  env:
-                      - name: MONGO_URL
-                        value: "mongodb://root:example@localhost:27017"
 
                 # LOOKUP
                 - name: lookup
@@ -154,12 +177,10 @@ apiVersion: v1
 kind: Service
 metadata:
     name: zookeeper
-    labels:
-        app: zookeeper
 spec:
+    selector:
+        app: control
     ports:
         - port: 2181
           targetPort: 2181
-    selector:
-        app: control
     type: ClusterIP
