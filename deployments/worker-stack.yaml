@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+    name: worker
+    labels:
+        app: worker
+spec:
+    serviceName: worker
+    replicas: 3
+    selector:
+        matchLabels:
+            app: worker
+    template:
+        metadata:
+            labels:
+                app: worker
+        spec:
+            affinity:
+                nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                        nodeSelectorTerms:
+                            - matchExpressions:
+                                  - key: node-role.kubernetes.io/worker
+                                    operator: Exists
+            containers:
+                # KAFKA
+                - name: kafka
+                  image: bitnami/kafka:latest
+                  ports:
+                      - containerPort: 9092
+                  readinessProbe:
+                      tcpSocket:
+                          port: 9092
+                      initialDelaySeconds: 15
+                      periodSeconds: 5
+                  env:
+                      - name: KAFKA_CFG_ZOOKEEPER_CONNECT
+                        value: zookeeper:2181
+                      - name: ALLOW_PLAINTEXT_LISTENER
+                        value: "yes"
+                      - name: KAFKA_CFG_LISTENERS
+                        value: PLAINTEXT://:9092
+                      - name: KAFKA_CFG_ADVERTISED_LISTENERS
+                        value: PLAINTEXT://localhost:9092
+                # MONGODB
+                - name: mongodb
+                  image: mongo:latest
+                  ports:
+                      - containerPort: 27017
+                  readinessProbe:
+                      tcpSocket:
+                          port: 27017
+                      initialDelaySeconds: 15
+                      periodSeconds: 5
+                  env:
+                      - name: MONGO_INITDB_ROOT_USERNAME
+                        value: "root"
+                      - name: MONGO_INITDB_ROOT_PASSWORD
+                        value: "example"
+                # LOOKUP
+                - name: lookup
+                  image: matiaspaavilainen/distributed-systems:lookup_service
+                  imagePullPolicy: Always
+                  readinessProbe:
+                      tcpSocket:
+                          port: 50051
+                      initialDelaySeconds: 25 # Wait for kafka
+                      periodSeconds: 5
+                  env:
+                      - name: PYTHONPATH
+                        value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing/"
+                      - name: KAFKA_SERVICE_PORT
+                        value: "2050"
+
+                - name: lookup-kafka-services
+                  image: matiaspaavilainen/distributed-systems:kafka_services
+                  imagePullPolicy: Always
+                  env:
+                      - name: PYTHONPATH
+                        value: "/app/consumer:/app/producer"
+                      - name: PORT_BASE
+                        value: "2050"
+                # NODE MANAGER
+                - name: node-manager
+                  image: matiaspaavilainen/distributed-systems:node_manager
+                  imagePullPolicy: Always
+                  env:
+                      - name: POD_NAME
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.name
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: lookup-service
+spec:
+    selector:
+        app: control
+    ports:
+        - protocol: TCP
+          port: 50051
+          targetPort: 50051
+    type: ClusterIP
