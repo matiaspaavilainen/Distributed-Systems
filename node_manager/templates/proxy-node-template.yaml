@@ -15,16 +15,19 @@ spec:
                 instance: "{id}"
             name: proxy-node-{id}
         spec:
-            # Add affinity to keep nodes with their manager
-            affinity:
-                podAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
+            # Keep proxy nodes with their manager
+            podAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
                     - labelSelector:
-                        matchExpressions:
-                        - key: app
-                          operator: In
-                          values:
-                          - node-manager
+                          matchExpressions:
+                              - key: app
+                                operator: In
+                                values:
+                                    - node-manager
+                              - key: statefulset.kubernetes.io/pod-name
+                                operator: In
+                                values:
+                                    - "{worker_id}" # Match StatefulSet pod name
                       topologyKey: kubernetes.io/hostname
             containers:
                 - name: proxy-node
@@ -49,11 +52,8 @@ spec:
                       - name: PORT
                         value: "{base_port}"
 
-                      - name: MONGO_URL
-                        value: "mongodb://root:example@mongodb-node-service:27017"
-
                       - name: MAIN_SERVER_ADDRESS
-                        value: "server-service.default.svc.cluster.local:40002"
+                        value: "server-service:40002"
 
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_server"
@@ -61,12 +61,12 @@ spec:
                   image: matiaspaavilainen/distributed-systems:kafka_services
                   imagePullPolicy: Always
                   env:
-                      - name: PORT_BASE
-                        value: "{base_port}"
                       - name: PYTHONPATH
                         value: "/app:/app/consumer:/app/producer"
-                      - name: KAFKA_BROKER
-                        value: "kafka-$(POD_NAME).kafka:9092"  # Local broker address
+                      - name: PORT_BASE
+                        value: "{base_port}"
+                      - name: POD_NAME
+                        value: "{worker-id}"
 ---
 # Internal service for gRPC
 apiVersion: v1
