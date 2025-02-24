@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-    name: proxy-node-{worker_num}-{id}
+    name: proxy-node-{worker_num}- {id}
 spec:
     replicas: 1
     selector:
@@ -16,9 +16,6 @@ spec:
                 instance: "{id}"
                 worker: "{worker_num}"
         spec:
-            env:
-                - name: WORKER_POD_NAME
-                  value: "{pod_name}"
             affinity:
                 podAffinity:
                     requiredDuringSchedulingIgnoredDuringExecution:
@@ -31,8 +28,7 @@ spec:
                                   - key: statefulset.kubernetes.io/pod-name
                                     operator: In
                                     values:
-                                        # Does not work directly, so need to use intermediary env
-                                        - $(WORKER_POD_NAME) # Use env var reference
+                                        - { pod_name }
                           topologyKey: kubernetes.io/hostname
             containers:
                 - name: proxy-node
