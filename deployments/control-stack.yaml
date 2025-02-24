@@ -35,7 +35,7 @@ spec:
                   env:
                       - name: ALLOW_ANONYMOUS_LOGIN
                         value: "yes"
-                      - name: ZOO_STANDALONE_ENABLED # Add standalone mode
+                      - name: ZOO_STANDALONE_ENABLED
                         value: "yes"
                       - name: ZOO_MAX_CLIENT_CNXNS # Limit connections
                         value: "2"

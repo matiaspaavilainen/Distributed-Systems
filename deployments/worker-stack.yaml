@@ -15,6 +15,7 @@ spec:
             labels:
                 app: worker
         spec:
+            serviceAccountName: node-manager-account
             affinity:
                 nodeAffinity:
                     requiredDuringSchedulingIgnoredDuringExecution:
