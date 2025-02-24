@@ -22,6 +22,7 @@ spec:
                                   - key: node-role.kubernetes.io/control-plane
                                     operator: Exists
             containers:
+                # ZOOKEEPER
                 - name: zookeeper
                   image: bitnami/zookeeper:latest
                   ports:
@@ -34,7 +35,7 @@ spec:
                   env:
                       - name: ALLOW_ANONYMOUS_LOGIN
                         value: "yes"
-
+                # KAFKA
                 - name: kafka
                   image: bitnami/kafka:latest
                   ports:
@@ -53,7 +54,7 @@ spec:
                         value: PLAINTEXT://:9092
                       - name: KAFKA_CFG_ADVERTISED_LISTENERS
                         value: PLAINTEXT://localhost:9092
-
+                # MONGODB
                 - name: mongodb
                   image: mongo:latest
                   ports:
@@ -122,10 +123,10 @@ spec:
                   image: matiaspaavilainen/distributed-systems:kafka_services
                   imagePullPolicy: Always
                   env:
-                      - name: PORT_BASE
-                        value: "2000"
                       - name: PYTHONPATH
                         value: "/app/consumer:/app/producer"
+                      - name: PORT_BASE
+                        value: "2000"
 
             volumes:
                 - name: mongo-init
@@ -155,4 +156,17 @@ spec:
     ports:
         - port: 2181
           targetPort: 2181
+    type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: lookup-service-control
+spec:
+    selector:
+        app: control
+    ports:
+        - protocol: TCP
+          port: 50051
+          targetPort: 50051
     type: ClusterIP
