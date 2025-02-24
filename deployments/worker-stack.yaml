@@ -60,10 +60,6 @@ spec:
                       initialDelaySeconds: 15
                       periodSeconds: 5
                   env:
-                      - name: POD_NAME
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.name
                       - name: KAFKA_CFG_ZOOKEEPER_CONNECT
                         value: "localhost:2181"
                       - name: ALLOW_PLAINTEXT_LISTENER
@@ -74,8 +70,12 @@ spec:
                         value: "PLAINTEXT:PLAINTEXT"
                       - name: KAFKA_CFG_LISTENERS
                         value: "PLAINTEXT://:9092"
+                      - name: NODE_IP
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: status.hostIP
                       - name: KAFKA_CFG_ADVERTISED_LISTENERS
-                        value: "PLAINTEXT://$(POD_NAME):9092"
+                        value: "PLAINTEXT://$(NODE_IP):9092"
                 # MONGODB
                 - name: mongodb
                   image: mongo:latest
@@ -114,10 +114,10 @@ spec:
                         value: "/app/consumer:/app/producer"
                       - name: PORT_BASE
                         value: "2050"
-                      - name: POD_NAME
+                      - name: NODE_IP
                         valueFrom:
                             fieldRef:
-                                fieldPath: metadata.name
+                                fieldPath: status.hostIP
                 # NODE MANAGER
                 - name: node-manager
                   image: matiaspaavilainen/distributed-systems:node_manager
@@ -129,10 +129,10 @@ spec:
                       periodSeconds: 5
                       failureThreshold: 6
                   env:
-                      - name: POD_NAME
+                      - name: NODE_IP
                         valueFrom:
                             fieldRef:
-                                fieldPath: metadata.name
+                                fieldPath: status.hostIP
 ---
 apiVersion: v1
 kind: Service
