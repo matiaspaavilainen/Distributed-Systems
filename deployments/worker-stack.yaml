@@ -60,18 +60,22 @@ spec:
                       initialDelaySeconds: 15
                       periodSeconds: 5
                   env:
-                      - name: POD_NAME
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.name
                       - name: KAFKA_CFG_ZOOKEEPER_CONNECT
                         value: localhost:2181
                       - name: ALLOW_PLAINTEXT_LISTENER
                         value: "yes"
+                      - name: KAFKA_CFG_BROKER_ID
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.name
+                      - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
+                        value: "PLAINTEXT:PLAINTEXT"
                       - name: KAFKA_CFG_LISTENERS
-                        value: PLAINTEXT://:9092
+                        value: "PLAINTEXT://:9092"
                       - name: KAFKA_CFG_ADVERTISED_LISTENERS
-                        value: PLAINTEXT://$(POD_NAME):9092
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.name # Use pod name for advertised listener
                 # MONGODB
                 - name: mongodb
                   image: mongo:latest
