@@ -176,7 +176,7 @@ metadata:
     namespace: default
 spec:
     selector:
-        app: gateway
+        app: control
     ports:
         - protocol: TCP
           port: 40404
