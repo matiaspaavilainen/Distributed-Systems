@@ -160,7 +160,6 @@ spec:
         - protocol: TCP
           port: 9092
           targetPort: 9092
-    clusterIP: None
 ---
 apiVersion: v1
 kind: Service
@@ -173,7 +172,6 @@ spec:
         - protocol: TCP
           port: 9092
           targetPort: 9092
-    clusterIP: None
 ---
 apiVersion: v1
 kind: Service
@@ -186,4 +184,3 @@ spec:
         - protocol: TCP
           port: 9092
           targetPort: 9092
-    clusterIP: None
