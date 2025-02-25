@@ -135,20 +135,9 @@ spec:
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.name
+
 ---
-apiVersion: v1
-kind: Service
-metadata:
-    name: lookup-service
-spec:
-    selector:
-        app: worker
-    ports:
-        - protocol: TCP
-          port: 50051
-          targetPort: 50051
-    type: ClusterIP
----
+# Need to be hardcoded
 apiVersion: v1
 kind: Service
 metadata:
@@ -166,6 +155,10 @@ spec:
           protocol: TCP
           port: 27017
           targetPort: 27017
+        - name: lookup
+          protocol: TCP
+          port: 50051
+          targetPort: 50051
     type: ClusterIP
 ---
 apiVersion: v1
@@ -185,6 +178,10 @@ spec:
           protocol: TCP
           port: 27017
           targetPort: 27017
+        - name: lookup
+          protocol: TCP
+          port: 50051
+          targetPort: 50051
     type: ClusterIP
 ---
 apiVersion: v1
@@ -204,4 +201,8 @@ spec:
           protocol: TCP
           port: 27017
           targetPort: 27017
+        - name: lookup
+          protocol: TCP
+          port: 50051
+          targetPort: 50051
     type: ClusterIP
