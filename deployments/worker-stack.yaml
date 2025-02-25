@@ -119,20 +119,20 @@ spec:
                             fieldRef:
                                 fieldPath: metadata.name
                 # NODE MANAGER
-                # - name: node-manager
-                #   image: matiaspaavilainen/distributed-systems:node_manager
-                #   imagePullPolicy: Always
-                #   readinessProbe:
-                #       tcpSocket:
-                #           port: 50051
-                #       initialDelaySeconds: 30
-                #       periodSeconds: 5
-                #       failureThreshold: 6
-                #   env:
-                #       - name: POD_NAME
-                #         valueFrom:
-                #             fieldRef:
-                #                 fieldPath: metadata.name
+                - name: node-manager
+                  image: matiaspaavilainen/distributed-systems:node_manager
+                  imagePullPolicy: Always
+                  readinessProbe:
+                      tcpSocket:
+                          port: 50051
+                      initialDelaySeconds: 30
+                      periodSeconds: 5
+                      failureThreshold: 6
+                  env:
+                      - name: POD_NAME
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.name
 ---
 apiVersion: v1
 kind: Service
@@ -146,46 +146,46 @@ spec:
           port: 50051
           targetPort: 50051
     type: ClusterIP
-# ---
-# # Hardcoded because doesnt work dynamically
-# apiVersion: v1
-# kind: Service
-# metadata:
-#     name: worker-0
-# spec:
-#     selector:
-#         app: worker
-#         statefulset.kubernetes.io/pod-name: worker-0
-#     ports:
-#         - protocol: TCP
-#           port: 9092
-#           targetPort: 9092
-#     type: ClusterIP
-# ---
-# apiVersion: v1
-# kind: Service
-# metadata:
-#     name: worker-1
-# spec:
-#     selector:
-#         app: worker
-#         statefulset.kubernetes.io/pod-name: worker-1
-#     ports:
-#         - protocol: TCP
-#           port: 9092
-#           targetPort: 9092
-#     type: ClusterIP
-# ---
-# apiVersion: v1
-# kind: Service
-# metadata:
-#     name: worker-2
-# spec:
-#     selector:
-#         app: worker
-#         statefulset.kubernetes.io/pod-name: worker-2
-#     ports:
-#         - protocol: TCP
-#           port: 9092
-#           targetPort: 9092
-#     type: ClusterIP
+---
+# Hardcoded because doesnt work dynamically
+apiVersion: v1
+kind: Service
+metadata:
+    name: worker-0
+spec:
+    selector:
+        app: worker
+        statefulset.kubernetes.io/pod-name: worker-0
+    ports:
+        - protocol: TCP
+          port: 9092
+          targetPort: 9092
+    type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: worker-1
+spec:
+    selector:
+        app: worker
+        statefulset.kubernetes.io/pod-name: worker-1
+    ports:
+        - protocol: TCP
+          port: 9092
+          targetPort: 9092
+    type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: worker-2
+spec:
+    selector:
+        app: worker
+        statefulset.kubernetes.io/pod-name: worker-2
+    ports:
+        - protocol: TCP
+          port: 9092
+          targetPort: 9092
+    type: ClusterIP
