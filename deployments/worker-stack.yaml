@@ -61,14 +61,6 @@ spec:
                       initialDelaySeconds: 20
                       periodSeconds: 5
                   env:
-                      - name: POD_NAME
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.name
-                      - name: KAFKA_CFG_LISTENERS
-                        value: "PLAINTEXT://0.0.0.0:9092" # Allow Kafka to listen on all interfaces
-                      - name: KAFKA_CFG_ADVERTISED_LISTENERS
-                        value: "PLAINTEXT://$(POD_NAME).kafka-broker.default.svc.cluster.local:9092" # Internal DNS address for Kafka broker
                       - name: KAFKA_CFG_ZOOKEEPER_CONNECT
                         value: "localhost:2181" # Zookeeper within the same pod
                       - name: KAFKA_CFG_BROKER_ID
@@ -77,6 +69,14 @@ spec:
                         value: "PLAINTEXT:PLAINTEXT"
                       - name: ALLOW_PLAINTEXT_LISTENER
                         value: "yes"
+                      - name: POD_IP
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: status.podIP
+                      - name: KAFKA_CFG_LISTENERS
+                        value: "PLAINTEXT://0.0.0.0:9092"
+                      - name: KAFKA_CFG_ADVERTISED_LISTENERS
+                        value: "PLAINTEXT://$(POD_IP):9092"
                 # MONGODB
                 - name: mongodb
                   image: mongo:latest
@@ -127,10 +127,10 @@ spec:
                       periodSeconds: 5
                       failureThreshold: 6
                   env:
-                      - name: POD_NAME
+                      - name: POD_IP
                         valueFrom:
                             fieldRef:
-                                fieldPath: metadata.name
+                                fieldPath: status.podIP
 ---
 apiVersion: v1
 kind: Service
@@ -148,12 +148,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-    name: kafka-broker
+    name: worker-0
 spec:
-    clusterIP: None # Makes it headless
     selector:
-        app: worker # Match all worker pods
+        app: worker
+        statefulset.kubernetes.io/pod-name: worker-0
     ports:
         - protocol: TCP
           port: 9092
           targetPort: 9092
+    type: ClusterIP
