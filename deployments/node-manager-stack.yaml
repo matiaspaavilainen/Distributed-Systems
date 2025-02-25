@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+    name: node-manager
+    labels:
+        app: node-manager
+spec:
+    serviceName: node-manager
+    replicas: 3
+    selector:
+        matchLabels:
+            app: node-manager
+    template:
+        metadata:
+            labels:
+                app: node-manager
+        spec:
+            serviceAccountName: node-manager-account
+            affinity:
+                # This keeps the node-managers aligned with their corresponding worker pods
+                podAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                        - labelSelector:
+                              matchLabels:
+                                  app: worker
+                          topologyKey: "kubernetes.io/hostname"
+                # This ensures one node-manager per node
+                podAntiAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                        - labelSelector:
+                              matchLabels:
+                                  app: node-manager
+                          topologyKey: "kubernetes.io/hostname"
+
+            containers:
+                - name: node-manager
+                  image: matiaspaavilainen/distributed-systems:node_manager
+                  imagePullPolicy: Always
+                  env:
+                      - name: POD_IP
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: status.podIP
+                      - name: POD_NAME
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.name

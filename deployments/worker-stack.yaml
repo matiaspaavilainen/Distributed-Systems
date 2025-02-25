@@ -116,26 +116,6 @@ spec:
                       - name: PORT_BASE
                         value: "2050"
 
-                # NODE MANAGER
-                - name: node-manager
-                  image: matiaspaavilainen/distributed-systems:node_manager
-                  imagePullPolicy: Always
-                  readinessProbe:
-                      tcpSocket:
-                          port: 50051
-                      initialDelaySeconds: 30
-                      periodSeconds: 5
-                      failureThreshold: 6
-                  env:
-                      - name: POD_IP
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: status.podIP
-                      - name: POD_NAME
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.name
-
 ---
 # Need to be hardcoded
 apiVersion: v1

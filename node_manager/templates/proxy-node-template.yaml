@@ -41,10 +41,10 @@ spec:
                             fieldRef:
                                 fieldPath: metadata.name
 
-                      - name: POD_IP
+                      - name: VM_IP
                         valueFrom:
                             fieldRef:
-                                fieldPath: status.podIP
+                                fieldPath: status.hostIP
 
                       - name: PORT
                         value: "{base_port}"
