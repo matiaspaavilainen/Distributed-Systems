@@ -6,7 +6,7 @@ metadata:
         app: worker
 spec:
     serviceName: worker
-    replicas: 3
+    replicas: 1
     selector:
         matchLabels:
             app: worker
@@ -39,7 +39,7 @@ spec:
                   readinessProbe:
                       tcpSocket:
                           port: 2181
-                      initialDelaySeconds: 10
+                      initialDelaySeconds: 15
                       periodSeconds: 5
                   env:
                       - name: ALLOW_ANONYMOUS_LOGIN
@@ -58,7 +58,7 @@ spec:
                   readinessProbe:
                       tcpSocket:
                           port: 9092
-                      initialDelaySeconds: 15
+                      initialDelaySeconds: 20
                       periodSeconds: 5
                   env:
                       - name: POD_NAME
