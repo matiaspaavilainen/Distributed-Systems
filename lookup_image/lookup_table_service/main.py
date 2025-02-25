@@ -15,6 +15,7 @@ from grpc_sharing.grpc_sharing import broadcast_to_peers, start_grpc_server
 
 # Constants
 kafka_port = int(os.getenv("KAFKA_SERVICE_PORT"))
+vm_ip = os.getenv("VM_IP")
 CONSUMER_PORT = kafka_port + 2
 PRODUCER_PORT = kafka_port + 3
 
@@ -56,7 +57,6 @@ def broadcast_table():
                 topic=LOOKUP_TABLE_TOPIC, data=json.dumps(table_data)
             )
             stub.SendMessage(request)
-            print(table_data)
     except Exception as e:
         print(f"Error broadcasting table: {e}")
 
@@ -83,21 +83,24 @@ def update_table(data, update_type, from_peer=False):
         # MongoDB updates
         if update_type == "A":
             for address, values in data.items():
+                print(f"Processing address: {address}")
                 collection.update_one(
                     {"address": str(address)},
                     {"$addToSet": {"values": {"$each": values}}},
                     upsert=True,
                 )
-        elif update_type == "D":
-            for address in data:
-                collection.delete_one({"address": str(address)})
         elif update_type == "I":
             for address in data:
+                print(f"Initializing address: {address}")
                 collection.update_one(
                     {"address": str(address)},
                     {"$set": {"values": []}},
                     upsert=True,
                 )
+        elif update_type == "D":
+            for address in data:
+                print(f"Deleting address: {address}")
+                collection.delete_one({"address": str(address)})
 
         # Broadcast to Kafka always
         send_update(data, update_type)
@@ -131,11 +134,29 @@ def process_updates():
 
 
 def shutdown_gracefully(*args):
-    global server
+    global server, vm_ip
     print("Received termination signal, shutting down gracefully...")
 
     # Stop accepting new requests
     stop_event.set()
+
+    try:
+        # Get all entries for this node and remove them
+        entries_to_delete = []
+
+        # Find all entries that belong to this node
+        for doc in collection.find():
+            address = doc["address"]
+            if address.startswith(vm_ip):
+                entries_to_delete.append(address)
+
+        # If we have entries to delete, update the table
+        if entries_to_delete:
+            print(f"Cleaning up {len(entries_to_delete)} entries for {vm_ip}")
+            update_table(entries_to_delete, "D", from_peer=False)
+
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
 
     # Wait for Kafka consumer thread to finish
     if process_thread and process_thread.is_alive():
@@ -144,15 +165,15 @@ def shutdown_gracefully(*args):
     # Gracefully stop gRPC server
     if server:
         print("Stopping gRPC server...")
-        server.stop(grace=5)  # Give 5 seconds for ongoing RPCs to complete
-        server.wait_for_termination(timeout=5)
+        server.stop(grace=15)  # Give 5 seconds for ongoing RPCs to complete
+        server.wait_for_termination(timeout=15)
 
     print("Shutdown complete")
     os._exit(0)
 
 
 def main():
-    global collection, process_thread, vector_clock, server
+    global collection, process_thread, vector_clock, server, vm_ip
 
     vector_clock = VectorClock({})
     signal.signal(signal.SIGTERM, shutdown_gracefully)

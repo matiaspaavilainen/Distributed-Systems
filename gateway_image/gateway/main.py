@@ -31,23 +31,12 @@ class VMLoadBalancer:
         with self.lock:
             vm_ip = node_info.split(":")[0]
             if vm_ip not in self.vm_nodes:
-                self.vm_nodes[vm_ip] = []  # Change to list instead of set
+                self.vm_nodes[vm_ip] = []
                 self.vm_weights[vm_ip] = 0
-
-            # Debug before adding
-            if DEBUG:
-                print(f"Adding node: '{node_info}'")
-                if self.vm_nodes[vm_ip]:
-                    print(f"Current nodes for {vm_ip}: {self.vm_nodes[vm_ip]}")
 
             # Add to list (no need to check for uniqueness)
             self.vm_nodes[vm_ip].append(node_info)
             self.vm_weights[vm_ip] += 1
-
-            if DEBUG:
-                print(
-                    f"Added node to VM {vm_ip}, now has {self.vm_weights[vm_ip]} nodes (list length: {len(self.vm_nodes[vm_ip])})"
-                )
 
     def remove_node(self, node_info):
         with self.lock:
@@ -56,35 +45,24 @@ class VMLoadBalancer:
                 if node_info in self.vm_nodes[vm_ip]:
                     self.vm_nodes[vm_ip].remove(node_info)  # Remove from list
                     self.vm_weights[vm_ip] -= 1
-                    if DEBUG:
-                        print(
-                            f"Removed node from VM {vm_ip}, now has {self.vm_weights[vm_ip]} nodes"
-                        )
+
                 # Clean up VM entry if no nodes left
                 if not self.vm_nodes[vm_ip]:
                     del self.vm_nodes[vm_ip]
                     del self.vm_weights[vm_ip]
-                    if DEBUG:
-                        print(f"Removed VM {vm_ip} as it has no nodes")
 
     def get_next_vm_node(self):
+        """Simple round-robin between available VMs"""
         with self.lock:
             if not self.vm_nodes:
-                return None, None
+                return None
 
-            # Get VM with least load
+            # Get next VM in round-robin fashion
             vm_ips = list(self.vm_nodes.keys())
             vm_ip = vm_ips[self.current_vm]
             self.current_vm = (self.current_vm + 1) % len(vm_ips)
 
-            # Get random node from that VM
-            nodes = list(self.vm_nodes[vm_ip])
-            if not nodes:
-                return None, None
-
-            node_info = nodes[0]
-            _, nodeport, _, _ = node_info.split(":")
-            return vm_ip, int(nodeport)
+            return vm_ip
 
 
 load_balancer = VMLoadBalancer()
@@ -92,11 +70,11 @@ load_balancer = VMLoadBalancer()
 
 @app.get("/resource/{query}")
 async def handle_request(query: str):
-    vm_ip, nodeport = load_balancer.get_next_vm_node()  # or get_vm_for_query(query)
+    vm_ip = load_balancer.get_next_vm_node()
     if not vm_ip:
         raise HTTPException(status_code=503, detail="No nodes available")
 
-    target_url = f"http://{vm_ip}:{nodeport}/resource/{query}"
+    target_url = f"http://{vm_ip}:30080/resource/{query}"
     if DEBUG:
         print(f"Redirecting to VM {target_url}")
     return RedirectResponse(url=target_url, status_code=307)

@@ -112,7 +112,7 @@ spec:
                             fieldRef:
                                 fieldPath: status.hostIP
 
-                - name: lookup-kafka-services
+                - name: kafka-service-lookup
                   image: matiaspaavilainen/distributed-systems:kafka_services
                   imagePullPolicy: Always
                   env:

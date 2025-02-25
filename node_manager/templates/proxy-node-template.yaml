@@ -20,11 +20,9 @@ spec:
                 podAffinity:
                     requiredDuringSchedulingIgnoredDuringExecution:
                         - labelSelector:
-                              matchExpressions:
-                                  - key: app
-                                    operator: In
-                                    values:
-                                        - worker
+                              matchLabels:
+                                  app: worker
+                                  statefulset.kubernetes.io/pod-name: worker-{worker_num}
                           topologyKey: kubernetes.io/hostname
             containers:
                 - name: proxy-node
@@ -48,9 +46,6 @@ spec:
 
                       - name: PORT
                         value: "{base_port}"
-
-                      - name: MAIN_SERVER_ADDRESS
-                        value: "server-service:40002"
 
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_server"

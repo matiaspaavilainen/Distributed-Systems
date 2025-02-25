@@ -1,9 +1,7 @@
-import datetime
 import os
 import threading
 import time
 import signal
-import grpc
 from pymongo import MongoClient
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
@@ -24,7 +22,7 @@ import grpc_server_SAND
 DEBUG = True
 VM_IP = os.getenv("VM_IP")
 POD_NAME = os.getenv("POD_NAME")
-MAIN_SERVER_ADDRESS = os.getenv("MAIN_SERVER_ADDRESS")
+MAIN_SERVER_ADDRESS = "server-service.default.svc.cluster.local:40002"
 
 # Use local MongoDB on worker node
 mongo_service = f"worker-{POD_NAME.split("-")[2]}"
@@ -86,7 +84,7 @@ def process_item_response(item, query):
         collection.insert_one(user_data.copy())
         print("Added " + str(user_data.get("name")) + " to the local database")
         update_lookup_table(
-            {get_node_address(): [query]},
+            {get_own_lookup_entry(): [query]},
             message_type="A",
             received_from_message=False,
             kafka_producer_port=KAFKA_PROD_PORT,
@@ -98,7 +96,7 @@ def process_item_response(item, query):
 
 def parse_node_address(address):
     """Parse the combined address format into gRPC address"""
-    vm_ip, _, grpc_nodeport, _ = address.split(":")
+    vm_ip, _, grpc_nodeport = address.split(":")
     return f"{vm_ip}:{grpc_nodeport}"  # Use NodePort for gRPC
 
 
@@ -126,18 +124,17 @@ def find_item_from_any_db(query):
     return process_item_response(item, query)
 
 
-def get_node_address():
-    """Get the node's address with VM IP for both internal and external access"""
-    if not POD_NAME:
-        raise RuntimeError("POD_NAME environment variable not set")
-
+def get_own_lookup_entry():
+    """Get the node's own lookup entry in the correct format"""
     try:
-        node_id = POD_NAME.split("-")[2]
-        grpc_nodeport = 30100 + int(node_id)  # Match the new nodeport scheme
+        node_id = POD_NAME.split("-")[3]
+        worker_num = POD_NAME.split("-")[2]
+        grpc_nodeport = 30100 + (int(worker_num) * 100) + int(node_id)
+
     except IndexError:
         raise RuntimeError(f"Unexpected pod name format: {POD_NAME}")
 
-    return f"{VM_IP}:30080:{grpc_nodeport}:{node_id}"
+    return f"{VM_IP}:30080:{grpc_nodeport}"
 
 
 def start_http_server(port):
@@ -148,7 +145,7 @@ def shutdown_gracefully(*args):
     print("Received termination signal, shutting down gracefully...")
     send_message(
         NODE_UPDATES,
-        {"data": [get_node_address()], "type": "D"},
+        {"data": [get_own_lookup_entry()], "type": "D"},
         KAFKA_PROD_PORT,
     )
     time.sleep(2)  # Give time for message to be sent
@@ -203,7 +200,7 @@ def main(port):
 
     send_message(
         NODE_UPDATES,
-        {"data": [get_node_address()], "type": "I"},
+        {"data": [get_own_lookup_entry()], "type": "I"},
         KAFKA_PROD_PORT,
     )
 

@@ -8,12 +8,15 @@ class LookupServicer(lookup_sharing_pb2_grpc.LookupSharingServicer):
     def __init__(self, collection, vector_clock, update_table_func):
         self.collection = collection
         self.vector_clock = vector_clock
-        self.update_table = update_table_func  # Pass the function as dependency
+        self.update_table = update_table_func
 
     def ReceivePeerUpdate(self, request, context):
         try:
             data = json.loads(request.data)
             remote_vector_clock = json.loads(request.vector_clock)
+            print(
+                f"Received peer update: type={request.type}, data={data}"
+            )  # Debug log
 
             # Update local vector clock
             for node_id, clock in remote_vector_clock.items():
@@ -21,12 +24,12 @@ class LookupServicer(lookup_sharing_pb2_grpc.LookupSharingServicer):
                 if clock > current:
                     self.vector_clock.clocks[node_id] = clock
 
-            # Process update with from_peer flag to prevent loops
-            self.update_table(
-                data, request.type, from_peer=True
-            )  # Use the passed function
+            # Process other updates normally
+            self.update_table(data, request.type, from_peer=True)
+
             return lookup_sharing_pb2.UpdateResponse(success=True)
         except Exception as e:
+            print(f"Error in ReceivePeerUpdate: {e}")  # Debug log
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
             return lookup_sharing_pb2.UpdateResponse(success=False)
@@ -42,7 +45,7 @@ def broadcast_to_peers(data, update_type, vector_clock, peer_lookups):
                     type=update_type,
                     vector_clock=json.dumps(vector_clock.clocks),
                 )
-                stub.ReceivePeerUpdate(request)  # Changed from PropagateUpdate
+                stub.ReceivePeerUpdate(request)
         except Exception as e:
             print(f"Failed to propagate to peer {peer}: {e}")
 

@@ -191,8 +191,9 @@ stern --version
 
     ```bash
     # Check gateway logs with stern
-    stern gateway -c gateway
-    # If active nodes shows 2 nodes for this VM, should be good to go
+    stern control -c gateway
+    # If shows 3 active nodes for 3 VMs, should be ready
+    # NOTE: takes quite a long time to get all the nodes here, just wait
 
     # Get VM's IP
     ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -n 1

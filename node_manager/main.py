@@ -23,7 +23,7 @@ def initialize_k8s():
 # prometheus-prometheus-pushgateway.monitoring.svc.cluster.local:9091
 
 
-def fill_template(template, node_id, ports, pod_name, pod_ip):
+def fill_template(template, node_id, ports, worker_num, pod_ip):
     """Fill template with node ID and port values"""
     filled = copy.deepcopy(template)
 
@@ -33,14 +33,10 @@ def fill_template(template, node_id, ports, pod_name, pod_ip):
                 if isinstance(v, (dict, list)):
                     replace_values(v)
                 elif isinstance(v, str):
-                    # Use format-style string replacement
-                    worker_num = pod_name.split("-")[1] if "{worker_num}" in v else None
-
                     # Create a mapping of replacements
                     replacements = {
                         "id": str(node_id),
                         "worker_num": worker_num,
-                        "pod_name": pod_name,
                         "pod_ip": pod_ip,
                     }
 
@@ -66,18 +62,17 @@ def fill_template(template, node_id, ports, pod_name, pod_ip):
                 replace_values(item)
 
     replace_values(filled)
+    # Return the filled template
     return filled
 
 
-def create_node(k8s_apps, k8s_core, template, node_id, pod_name, pod_ip):
+def create_node(k8s_apps, k8s_core, template, node_id, worker_num, pod_ip):
     base_port = 50060
-    # Extract worker number from pod name (e.g., 'worker-1' -> 1)
-    worker_num = int(pod_name.split("-")[1])
 
     port_offset = node_id * 10
-    # Calculate unique NodePort: 30100 + (worker * 100) + node_id
+    # Calculate unique NodePort: 30000 + (worker * 100) + node_id
     # Example: worker-1, node 2 -> 30102
-    grpc_nodeport = 30100 + (worker_num * 100) + node_id
+    grpc_nodeport = 30000 + (worker_num * 100) + node_id
 
     ports = {
         "base_port": int(base_port + port_offset),
@@ -86,22 +81,21 @@ def create_node(k8s_apps, k8s_core, template, node_id, pod_name, pod_ip):
         "grpc_nodeport": grpc_nodeport,
     }
 
-    print(f"Creating node {node_id} with ports: {ports} on {pod_name}")
+    print(f"Creating node {node_id} with ports: {ports} on worker-{worker_num}")
 
     # Create deployment and services using filled templates
-    deployment = fill_template(template[0], node_id, ports, pod_name, pod_ip)
+    deployment = fill_template(template[0], node_id, ports, worker_num, pod_ip)
     k8s_apps.create_namespaced_deployment(body=deployment, namespace="default")
 
-    grpc_service = fill_template(template[1], node_id, ports, pod_name, pod_ip)
+    grpc_service = fill_template(template[1], node_id, ports, worker_num, pod_ip)
     k8s_core.create_namespaced_service(body=grpc_service, namespace="default")
 
-    http_service = fill_template(template[2], node_id, ports, pod_name, pod_ip)
+    http_service = fill_template(template[2], node_id, ports, worker_num, pod_ip)
     k8s_core.create_namespaced_service(body=http_service, namespace="default")
 
 
-def delete_node(k8s_apps, k8s_core, node_id, pod_name):
+def delete_node(k8s_apps, k8s_core, node_id, worker_num):
     """Delete a node and its services"""
-    worker_num = int(pod_name.split("-")[1])
     print(f"Deleting node {node_id} from worker {worker_num}...")
     try:
         # Delete deployment with worker-specific name
@@ -119,12 +113,29 @@ def delete_node(k8s_apps, k8s_core, node_id, pod_name):
         print(f"Error deleting node {node_id} from worker {worker_num}: {e}")
 
 
+# This is feels so dumb, but can't be done in any other way
+def create_node_template(template_base, worker_num):
+    """Create worker-specific template with hardcoded worker number"""
+    template = copy.deepcopy(template_base)
+
+    # Directly modify the nested affinity section
+    path = template[0]["spec"]["template"]["spec"]["affinity"]["podAffinity"][
+        "requiredDuringSchedulingIgnoredDuringExecution"
+    ][0]["labelSelector"]["matchLabels"]
+
+    # Set the correct label for worker pod matching
+    path.update(
+        {"app": "worker", "statefulset.kubernetes.io/pod-name": f"worker-{worker_num}"}
+    )
+
+    return template
+
+
 def main():
-    POD_NAME = os.getenv("POD_NAME")
+    WORKER_NAME = os.getenv("WORKER_NAME")
     POD_IP = os.getenv("POD_IP")
-    if not POD_NAME:
-        raise ValueError("NODE_ID environment variable not set")
-    print(POD_NAME)
+    if not WORKER_NAME or not POD_IP:
+        raise ValueError("WORKER_NAME or POD_IP environment variable not set")
 
     template_path = "templates/proxy-node-template.yaml"
     if not os.path.exists(template_path):
@@ -133,27 +144,40 @@ def main():
     stop_event = threading.Event()
     k8s_apps, k8s_core, k8s_networking = initialize_k8s()
     NUM_NODES = 3
+    worker_num = int(WORKER_NAME.split("-")[1])
 
+    # Load base template once
     with open(template_path, "r") as f:
-        template = list(yaml.safe_load_all(f))
+        base_template = list(yaml.safe_load_all(f))
 
     def shutdown_gracefully(*args):
         print("Received termination signal, shutting down node manager...")
         stop_event.set()
         # Clean up nodes
         for i in range(NUM_NODES):
-            delete_node(k8s_apps, k8s_core, i, POD_NAME)
+            delete_node(k8s_apps, k8s_core, node_id=i, worker_num=worker_num)
         print("All nodes deleted")
 
     signal.signal(signal.SIGTERM, shutdown_gracefully)
-
     time.sleep(2)
 
     print(f"Starting node manager, creating {NUM_NODES} nodes...")
 
+    # Create nodes one at a time, using and discarding templates as we go
     for i in range(NUM_NODES):
-        create_node(k8s_apps, k8s_core, template, i, pod_name=POD_NAME, pod_ip=POD_IP)
-        print(f"Created node {i} on {POD_NAME}")
+        # Create worker-specific template for this node
+        current_template = create_node_template(base_template, worker_num)
+        create_node(
+            k8s_apps,
+            k8s_core,
+            current_template,
+            node_id=i,
+            worker_num=worker_num,
+            pod_ip=POD_IP,
+        )
+        print(f"Created node {i} on {WORKER_NAME}")
+        # Let the template be garbage collected
+        current_template = None
 
     print("All nodes created. Node ports:")
     for i in range(NUM_NODES):

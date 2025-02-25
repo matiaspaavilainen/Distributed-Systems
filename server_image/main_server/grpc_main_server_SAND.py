@@ -6,7 +6,7 @@ import data_pb2
 import data_pb2_grpc
 import grpc_main_server_db
 
-DEBUG = False
+DEBUG = True
 
 
 def get_data(db, name):

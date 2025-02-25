@@ -36,5 +36,6 @@ except Exception as e:
 done
 
 echo "All worker lookup services ready! Starting node-manager..."
+sleep 5
 # Launch the actual node-manager process
 exec python /app/main.py
