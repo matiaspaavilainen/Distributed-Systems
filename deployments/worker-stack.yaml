@@ -125,11 +125,19 @@ spec:
                           "-c",
                           '
                           echo "Waiting for all worker pods to be ready...";
-                          until wget -T 2 -q -O - http://worker-0:50051 >/dev/null 2>&1 &&
-                          wget -T 2 -q -O - http://worker-1:50051 >/dev/null 2>&1 &&
-                          wget -T 2 -q -O - http://worker-2:50051 >/dev/null 2>&1; do
+                          until python -c "import socket;
+                          try:
+                          s0 = socket.create_connection((\"worker-0\", 50051), timeout=2);
+                          s0.close();
+                          s1 = socket.create_connection((\"worker-1\", 50051), timeout=2);
+                          s1.close();
+                          s2 = socket.create_connection((\"worker-2\", 50051), timeout=2);
+                          s2.close();
+                          exit(0)
+                          except:
+                          exit(1)" > /dev/null 2>&1; do
                           echo "Waiting for all worker lookup services...";
-                          sleep 5;
+                          sleep 10;
                           done;
                           echo "All worker lookup services ready! Starting node-manager...";
                           # Launch the actual node-manager process
