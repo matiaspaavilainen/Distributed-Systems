@@ -4,9 +4,7 @@ metadata:
     name: mongo-init-script
 data:
     init.js: |
-        // Only initialize if this is mongodb-0 (control plane)
-        if (db.getMongo().toString().includes('-0')) {
-            // First, create the database
+        // First, create the database
             db = db.getSiblingDB('SAND');
 
             // Function to generate random date within a range
@@ -50,6 +48,3 @@ data:
             db.users.createIndex({ "orders": -1 });
 
             print("Initialized database with " + users.length + " users");
-        } else {
-            print("Not control plane instance, skipping initialization");
-        }
