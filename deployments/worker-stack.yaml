@@ -14,7 +14,6 @@ spec:
         metadata:
             labels:
                 app: worker
-                statefulset.kubernetes.io/pod-name: worker-$(POD_NAME) # Add this
         spec:
             serviceAccountName: node-manager-account
             affinity:
