@@ -30,6 +30,7 @@ spec:
                               matchLabels:
                                   app: worker
                           topologyKey: "kubernetes.io/hostname"
+
             containers:
                 # ZOOKEEPER
                 - name: zookeeper
@@ -115,6 +116,40 @@ spec:
                         value: "/app/consumer:/app/producer"
                       - name: PORT_BASE
                         value: "2050"
+                # NODE MANAGER
+                - name: node-manager
+                  image: matiaspaavilainen/distributed-systems:node_manager
+                  imagePullPolicy: Always
+                  command: [
+                          "sh",
+                          "-c",
+                          '
+                          echo "Waiting for all worker pods to be ready...";
+                          until wget -T 2 -q -O - http://worker-0.worker:50051 >/dev/null 2>&1 &&
+                          wget -T 2 -q -O - http://worker-1.worker:50051 >/dev/null 2>&1 &&
+                          wget -T 2 -q -O - http://worker-2.worker:50051 >/dev/null 2>&1; do
+                          echo "Waiting for all worker lookup services...";
+                          sleep 5;
+                          done;
+                          echo "All worker lookup services ready! Starting node-manager...";
+                          # Launch the actual node-manager process
+                          exec python /app/main.py
+                          ',
+                      ]
+                  readinessProbe:
+                      tcpSocket:
+                          port: 50051
+                      initialDelaySeconds: 15
+                      periodSeconds: 5
+                  env:
+                      - name: POD_IP
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: status.podIP
+                      - name: POD_NAME
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.name
 
 ---
 # Need to be hardcoded
