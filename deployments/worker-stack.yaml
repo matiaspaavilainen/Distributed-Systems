@@ -120,8 +120,7 @@ spec:
                 - name: node-manager
                   image: matiaspaavilainen/distributed-systems:node_manager
                   imagePullPolicy: Always
-                  # has to have indentation
-                  command: ["/app/startup.sh"]
+                  command: ["bash", "/app/startup.sh"]
                   readinessProbe:
                       tcpSocket:
                           port: 50051
