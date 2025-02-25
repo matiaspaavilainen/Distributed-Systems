@@ -125,9 +125,9 @@ spec:
                           "-c",
                           '
                           echo "Waiting for all worker pods to be ready...";
-                          until wget -T 2 -q -O - http://worker-0.worker:50051 >/dev/null 2>&1 &&
-                          wget -T 2 -q -O - http://worker-1.worker:50051 >/dev/null 2>&1 &&
-                          wget -T 2 -q -O - http://worker-2.worker:50051 >/dev/null 2>&1; do
+                          until wget -T 2 -q -O - http://worker-0:50051 >/dev/null 2>&1 &&
+                          wget -T 2 -q -O - http://worker-1:50051 >/dev/null 2>&1 &&
+                          wget -T 2 -q -O - http://worker-2:50051 >/dev/null 2>&1; do
                           echo "Waiting for all worker lookup services...";
                           sleep 5;
                           done;
