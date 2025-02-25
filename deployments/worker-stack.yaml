@@ -65,18 +65,18 @@ spec:
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.name
+                      - name: KAFKA_CFG_LISTENERS
+                        value: "PLAINTEXT://0.0.0.0:9092" # Allow Kafka to listen on all interfaces
+                      - name: KAFKA_CFG_ADVERTISED_LISTENERS
+                        value: "PLAINTEXT://$(POD_NAME).kafka-broker.default.svc.cluster.local:9092" # Internal DNS address for Kafka broker
                       - name: KAFKA_CFG_ZOOKEEPER_CONNECT
-                        value: "localhost:2181"
-                      - name: ALLOW_PLAINTEXT_LISTENER
-                        value: "yes"
-                      - name: KAFKA_CFG_BROKER_ID # Simple static ID since only one broker per VM
-                        value: "1"
+                        value: "localhost:2181" # Zookeeper within the same pod
+                      - name: KAFKA_CFG_BROKER_ID
+                        value: "1" # Static for simplicity
                       - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
                         value: "PLAINTEXT:PLAINTEXT"
-                      - name: KAFKA_CFG_LISTENERS
-                        value: PLAINTEXT://:9092
-                      - name: KAFKA_CFG_ADVERTISED_LISTENERS
-                        value: "PLAINTEXT://$(POD_NAME).kafka-broker.default.svc.cluster.local:9092"
+                      - name: ALLOW_PLAINTEXT_LISTENER
+                        value: "yes"
                 # MONGODB
                 - name: mongodb
                   image: mongo:latest
