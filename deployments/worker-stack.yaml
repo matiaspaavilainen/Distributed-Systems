@@ -121,30 +121,7 @@ spec:
                   image: matiaspaavilainen/distributed-systems:node_manager
                   imagePullPolicy: Always
                   # has to have indentation
-                  command: [
-                          "sh",
-                          "-c",
-                          '
-                          echo "Waiting for all worker pods to be ready...";
-                          until python -c "import socket; 
-                          try: 
-                              s0 = socket.create_connection(("worker-0", 50051), timeout=2); 
-                              s0.close();
-                              s1 = socket.create_connection(("worker-1", 50051), timeout=2);
-                              s1.close();
-                              s2 = socket.create_connection(("worker-2", 50051), timeout=2);
-                              s2.close();
-                              exit(0)
-                          except: 
-                              exit(1)" > /dev/null 2>&1; do
-                          echo "Waiting for all worker lookup services...";
-                          sleep 5;
-                          done;
-                          echo "All worker lookup services ready! Starting node-manager...";
-                          # Launch the actual node-manager process
-                          exec python /app/main.py
-                          ',
-                      ]
+                  command: ["/app/startup.sh"]
                   readinessProbe:
                       tcpSocket:
                           port: 50051

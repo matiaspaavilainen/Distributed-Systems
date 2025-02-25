@@ -22,7 +22,7 @@ import grpc_server_SAND
 
 # Constants
 DEBUG = True
-POD_IP = os.getenv("POD_IP")
+VM_IP = os.getenv("VM_IP")
 POD_NAME = os.getenv("POD_NAME")
 MAIN_SERVER_ADDRESS = os.getenv("MAIN_SERVER_ADDRESS")
 
@@ -137,7 +137,7 @@ def get_node_address():
     except IndexError:
         raise RuntimeError(f"Unexpected pod name format: {POD_NAME}")
 
-    return f"{POD_IP}:30080:{grpc_nodeport}:{node_id}"
+    return f"{VM_IP}:30080:{grpc_nodeport}:{node_id}"
 
 
 def start_http_server(port):

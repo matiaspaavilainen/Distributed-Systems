@@ -22,7 +22,7 @@ updates_thread = None
 
 class VMLoadBalancer:
     def __init__(self):
-        self.vm_nodes = {}  # VM IP -> Set of nodes
+        self.vm_nodes = {}  # VM IP -> List of nodes (changing from Set to List)
         self.vm_weights = {}  # VM IP -> node count
         self.current_vm = 0
         self.lock = threading.Lock()
@@ -31,25 +31,35 @@ class VMLoadBalancer:
         with self.lock:
             vm_ip = node_info.split(":")[0]
             if vm_ip not in self.vm_nodes:
-                self.vm_nodes[vm_ip] = set()
+                self.vm_nodes[vm_ip] = []  # Change to list instead of set
                 self.vm_weights[vm_ip] = 0
-            self.vm_nodes[vm_ip].add(node_info)
+
+            # Debug before adding
+            if DEBUG:
+                print(f"Adding node: '{node_info}'")
+                if self.vm_nodes[vm_ip]:
+                    print(f"Current nodes for {vm_ip}: {self.vm_nodes[vm_ip]}")
+
+            # Add to list (no need to check for uniqueness)
+            self.vm_nodes[vm_ip].append(node_info)
             self.vm_weights[vm_ip] += 1
+
             if DEBUG:
                 print(
-                    f"Added node to VM {vm_ip}, now has {self.vm_weights[vm_ip]} nodes"
+                    f"Added node to VM {vm_ip}, now has {self.vm_weights[vm_ip]} nodes (list length: {len(self.vm_nodes[vm_ip])})"
                 )
 
     def remove_node(self, node_info):
         with self.lock:
             vm_ip = node_info.split(":")[0]
             if vm_ip in self.vm_nodes:
-                self.vm_nodes[vm_ip].discard(node_info)
-                self.vm_weights[vm_ip] -= 1
-                if DEBUG:
-                    print(
-                        f"Removed node from VM {vm_ip}, now has {self.vm_weights[vm_ip]} nodes"
-                    )
+                if node_info in self.vm_nodes[vm_ip]:
+                    self.vm_nodes[vm_ip].remove(node_info)  # Remove from list
+                    self.vm_weights[vm_ip] -= 1
+                    if DEBUG:
+                        print(
+                            f"Removed node from VM {vm_ip}, now has {self.vm_weights[vm_ip]} nodes"
+                        )
                 # Clean up VM entry if no nodes left
                 if not self.vm_nodes[vm_ip]:
                     del self.vm_nodes[vm_ip]
@@ -114,13 +124,9 @@ def listen_for_updates():
                             for address in data:
                                 load_balancer.remove_node(address)
                         if DEBUG:
-                            # Improved logging format to make it easier to read
-                            vm_nodes_formatted = {}
-                            for vm_ip, nodes in load_balancer.vm_nodes.items():
-                                node_list = list(nodes)
-                                vm_nodes_formatted[vm_ip] = node_list
+                            # Simple output of the raw VM nodes structure
                             print(f"Updated active nodes:")
-                            for vm_ip, nodes in vm_nodes_formatted.items():
+                            for vm_ip, nodes in load_balancer.vm_nodes.items():
                                 print(f"  VM {vm_ip}: {len(nodes)} nodes")
                                 for node in nodes:
                                     print(f"    - {node}")
