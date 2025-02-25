@@ -14,6 +14,7 @@ spec:
         metadata:
             labels:
                 app: worker
+                statefulset.kubernetes.io/pod-name: worker-$(POD_NAME) # Add this
         spec:
             serviceAccountName: node-manager-account
             affinity:
@@ -120,12 +121,8 @@ spec:
                 - name: node-manager
                   image: matiaspaavilainen/distributed-systems:node_manager
                   imagePullPolicy: Always
+                  # script waits for everything else to be ready, then starts making nodes
                   command: ["bash", "/app/startup.sh"]
-                  readinessProbe:
-                      tcpSocket:
-                          port: 50051
-                      initialDelaySeconds: 15
-                      periodSeconds: 5
                   env:
                       - name: POD_IP
                         valueFrom:
