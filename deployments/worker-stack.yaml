@@ -127,7 +127,7 @@ spec:
                         valueFrom:
                             fieldRef:
                                 fieldPath: status.podIP
-                      - name: POD_NAME
+                      - name: WORKER_NAME
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.name
