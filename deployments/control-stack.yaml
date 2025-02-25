@@ -63,7 +63,7 @@ spec:
                       - name: KAFKA_CFG_LISTENERS
                         value: PLAINTEXT://:9092
                       - name: KAFKA_CFG_ADVERTISED_LISTENERS
-                        value: PLAINTEXT://$(POD_NAME):9092
+                        value: PLAINTEXT://localhost:9092
                 # MONGODB
                 - name: mongodb
                   image: mongo:latest
@@ -112,10 +112,6 @@ spec:
                         value: "2050"
                       - name: PYTHONPATH
                         value: "/app/consumer:/app/producer"
-                      - name: POD_NAME
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.name
 
                 # GATEWAY
                 - name: gateway
@@ -141,10 +137,6 @@ spec:
                         value: "/app/consumer:/app/producer"
                       - name: PORT_BASE
                         value: "2000"
-                      - name: POD_NAME
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.name
 
             volumes:
                 - name: mongo-init
