@@ -23,6 +23,7 @@ spec:
                             - matchExpressions:
                                   - key: node-role.kubernetes.io/worker
                                     operator: Exists
+                # one per worker node
                 podAntiAffinity:
                     requiredDuringSchedulingIgnoredDuringExecution:
                         - labelSelector:
@@ -154,13 +155,12 @@ metadata:
     name: worker-0
 spec:
     selector:
-        app: worker
         statefulset.kubernetes.io/pod-name: worker-0
     ports:
         - protocol: TCP
           port: 9092
           targetPort: 9092
-    type: ClusterIP
+    clusterIP: None
 ---
 apiVersion: v1
 kind: Service
@@ -168,13 +168,12 @@ metadata:
     name: worker-1
 spec:
     selector:
-        app: worker
         statefulset.kubernetes.io/pod-name: worker-1
     ports:
         - protocol: TCP
           port: 9092
           targetPort: 9092
-    type: ClusterIP
+    clusterIP: None
 ---
 apiVersion: v1
 kind: Service
@@ -182,10 +181,9 @@ metadata:
     name: worker-2
 spec:
     selector:
-        app: worker
         statefulset.kubernetes.io/pod-name: worker-2
     ports:
         - protocol: TCP
           port: 9092
           targetPort: 9092
-    type: ClusterIP
+    clusterIP: None
