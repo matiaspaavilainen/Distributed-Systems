@@ -158,10 +158,12 @@ spec:
         app: worker
         statefulset.kubernetes.io/pod-name: worker-0
     ports:
-        - protocol: TCP
+        - name: kafka
+          protocol: TCP
           port: 9092
           targetPort: 9092
-        - protocol: TCP
+        - name: mongodb
+          protocol: TCP
           port: 27017
           targetPort: 27017
     type: ClusterIP
@@ -175,10 +177,12 @@ spec:
         app: worker
         statefulset.kubernetes.io/pod-name: worker-1
     ports:
-        - protocol: TCP
+        - name: kafka
+          protocol: TCP
           port: 9092
           targetPort: 9092
-        - protocol: TCP
+        - name: mongodb
+          protocol: TCP
           port: 27017
           targetPort: 27017
     type: ClusterIP
@@ -192,10 +196,12 @@ spec:
         app: worker
         statefulset.kubernetes.io/pod-name: worker-2
     ports:
-        - protocol: TCP
+        - name: kafka
+          protocol: TCP
           port: 9092
           targetPort: 9092
-        - protocol: TCP
+        - name: mongodb
+          protocol: TCP
           port: 27017
           targetPort: 27017
     type: ClusterIP
