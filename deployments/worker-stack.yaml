@@ -76,7 +76,7 @@ spec:
                       - name: KAFKA_CFG_LISTENERS
                         value: PLAINTEXT://:9092
                       - name: KAFKA_CFG_ADVERTISED_LISTENERS
-                        value: "PLAINTEXT://$(POD_NAME).default.svc.cluster.local:9092"
+                        value: "PLAINTEXT://$(POD_NAME).kafka-broker.default.svc.cluster.local:9092"
                 # MONGODB
                 - name: mongodb
                   image: mongo:latest
@@ -152,7 +152,7 @@ metadata:
 spec:
     clusterIP: None # Makes it headless
     selector:
-        app: worker
+        app: worker # Match all worker pods
     ports:
         - protocol: TCP
           port: 9092
