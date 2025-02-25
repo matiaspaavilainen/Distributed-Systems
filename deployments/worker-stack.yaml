@@ -76,7 +76,7 @@ spec:
                       - name: KAFKA_CFG_LISTENERS
                         value: PLAINTEXT://:9092
                       - name: KAFKA_CFG_ADVERTISED_LISTENERS
-                        value: PLAINTEXT://$(POD_NAME):9092
+                        value: "PLAINTEXT://$(POD_NAME).default.svc.cluster.local:9092"
                 # MONGODB
                 - name: mongodb
                   image: mongo:latest
@@ -115,10 +115,7 @@ spec:
                         value: "/app/consumer:/app/producer"
                       - name: PORT_BASE
                         value: "2050"
-                      - name: POD_NAME
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: metadata.name
+
                 # NODE MANAGER
                 - name: node-manager
                   image: matiaspaavilainen/distributed-systems:node_manager
@@ -148,38 +145,14 @@ spec:
           targetPort: 50051
     type: ClusterIP
 ---
-# Hardcoded because doesnt work dynamically
 apiVersion: v1
 kind: Service
 metadata:
-    name: worker-0
+    name: kafka-broker
 spec:
+    clusterIP: None # Makes it headless
     selector:
-        statefulset.kubernetes.io/pod-name: worker-0
-    ports:
-        - protocol: TCP
-          port: 9092
-          targetPort: 9092
----
-apiVersion: v1
-kind: Service
-metadata:
-    name: worker-1
-spec:
-    selector:
-        statefulset.kubernetes.io/pod-name: worker-1
-    ports:
-        - protocol: TCP
-          port: 9092
-          targetPort: 9092
----
-apiVersion: v1
-kind: Service
-metadata:
-    name: worker-2
-spec:
-    selector:
-        statefulset.kubernetes.io/pod-name: worker-2
+        app: worker
     ports:
         - protocol: TCP
           port: 9092
