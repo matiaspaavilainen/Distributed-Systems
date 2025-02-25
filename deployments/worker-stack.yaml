@@ -6,7 +6,7 @@ metadata:
         app: worker
 spec:
     serviceName: worker
-    replicas: 1
+    replicas: 3
     selector:
         matchLabels:
             app: worker
@@ -161,4 +161,41 @@ spec:
         - protocol: TCP
           port: 9092
           targetPort: 9092
+        - protocol: TCP
+          port: 27017
+          targetPort: 27017
+    type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: worker-1
+spec:
+    selector:
+        app: worker
+        statefulset.kubernetes.io/pod-name: worker-1
+    ports:
+        - protocol: TCP
+          port: 9092
+          targetPort: 9092
+        - protocol: TCP
+          port: 27017
+          targetPort: 27017
+    type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: worker-2
+spec:
+    selector:
+        app: worker
+        statefulset.kubernetes.io/pod-name: worker-2
+    ports:
+        - protocol: TCP
+          port: 9092
+          targetPort: 9092
+        - protocol: TCP
+          port: 27017
+          targetPort: 27017
     type: ClusterIP
