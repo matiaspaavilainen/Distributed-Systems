@@ -23,7 +23,7 @@ def initialize_k8s():
 # prometheus-prometheus-pushgateway.monitoring.svc.cluster.local:9091
 
 
-def fill_template(template, node_id, ports, node_ip):
+def fill_template(template, node_id, ports, pod_name, pod_ip):
     """Fill template with node ID and port values"""
     filled = copy.deepcopy(template)
 
@@ -34,13 +34,14 @@ def fill_template(template, node_id, ports, node_ip):
                     replace_values(v)
                 elif isinstance(v, str):
                     # Use format-style string replacement
-                    worker_num = node_ip.split("-")[1] if "{worker_num}" in v else None
+                    worker_num = pod_name.split("-")[1] if "{worker_num}" in v else None
 
                     # Create a mapping of replacements
                     replacements = {
                         "id": str(node_id),
                         "worker_num": worker_num,
-                        "node_ip": node_ip,
+                        "pod_name": pod_name,
+                        "pod_ip": pod_ip,
                     }
 
                     # Add port replacements
@@ -68,10 +69,10 @@ def fill_template(template, node_id, ports, node_ip):
     return filled
 
 
-def create_node(k8s_apps, k8s_core, template, node_id, node_ip):
+def create_node(k8s_apps, k8s_core, template, node_id, pod_name, pod_ip):
     base_port = 50060
     # Extract worker number from pod name (e.g., 'worker-1' -> 1)
-    worker_num = int(node_ip.split("-")[1])
+    worker_num = int(pod_name.split("-")[1])
 
     port_offset = node_id * 10
     # Calculate unique NodePort: 30100 + (worker * 100) + node_id
@@ -85,22 +86,22 @@ def create_node(k8s_apps, k8s_core, template, node_id, node_ip):
         "grpc_nodeport": grpc_nodeport,
     }
 
-    print(f"Creating node {node_id} with ports: {ports} on {node_ip}")
+    print(f"Creating node {node_id} with ports: {ports} on {pod_name}")
 
     # Create deployment and services using filled templates
-    deployment = fill_template(template[0], node_id, ports, node_ip)
+    deployment = fill_template(template[0], node_id, ports, pod_name, pod_ip)
     k8s_apps.create_namespaced_deployment(body=deployment, namespace="default")
 
-    grpc_service = fill_template(template[1], node_id, ports, node_ip)
+    grpc_service = fill_template(template[1], node_id, ports, pod_name, pod_ip)
     k8s_core.create_namespaced_service(body=grpc_service, namespace="default")
 
-    http_service = fill_template(template[2], node_id, ports, node_ip)
+    http_service = fill_template(template[2], node_id, ports, pod_name, pod_ip)
     k8s_core.create_namespaced_service(body=http_service, namespace="default")
 
 
-def delete_node(k8s_apps, k8s_core, node_id, node_ip):
+def delete_node(k8s_apps, k8s_core, node_id, pod_name):
     """Delete a node and its services"""
-    worker_num = int(node_ip.split("-")[1])
+    worker_num = int(pod_name.split("-")[1])
     print(f"Deleting node {node_id} from worker {worker_num}...")
     try:
         # Delete deployment with worker-specific name
@@ -119,10 +120,11 @@ def delete_node(k8s_apps, k8s_core, node_id, node_ip):
 
 
 def main():
-    NODE_IP = os.getenv("NODE_IP")
-    if not NODE_IP:
+    POD_NAME = os.getenv("POD_NAME")
+    POD_IP = os.getenv("POD_IP")
+    if not POD_NAME:
         raise ValueError("NODE_ID environment variable not set")
-    print(NODE_IP)
+    print(POD_NAME)
 
     template_path = "templates/proxy-node-template.yaml"
     if not os.path.exists(template_path):
@@ -140,7 +142,7 @@ def main():
         stop_event.set()
         # Clean up nodes
         for i in range(NUM_NODES):
-            delete_node(k8s_apps, k8s_core, i, NODE_IP)
+            delete_node(k8s_apps, k8s_core, i, POD_NAME)
         print("All nodes deleted")
 
     signal.signal(signal.SIGTERM, shutdown_gracefully)
@@ -150,8 +152,8 @@ def main():
     print(f"Starting node manager, creating {NUM_NODES} nodes...")
 
     for i in range(NUM_NODES):
-        create_node(k8s_apps, k8s_core, template, i, node_ip=NODE_IP)
-        print(f"Created node {i} on {NODE_IP}")
+        create_node(k8s_apps, k8s_core, template, i, pod_name=POD_NAME, pod_ip=POD_IP)
+        print(f"Created node {i} on {POD_NAME}")
 
     print("All nodes created. Node ports:")
     for i in range(NUM_NODES):

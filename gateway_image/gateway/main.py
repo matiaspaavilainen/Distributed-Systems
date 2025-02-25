@@ -114,7 +114,16 @@ def listen_for_updates():
                             for address in data:
                                 load_balancer.remove_node(address)
                         if DEBUG:
-                            print(f"Updated active nodes: {load_balancer.vm_nodes}")
+                            # Improved logging format to make it easier to read
+                            vm_nodes_formatted = {}
+                            for vm_ip, nodes in load_balancer.vm_nodes.items():
+                                node_list = list(nodes)
+                                vm_nodes_formatted[vm_ip] = node_list
+                            print(f"Updated active nodes:")
+                            for vm_ip, nodes in vm_nodes_formatted.items():
+                                print(f"  VM {vm_ip}: {len(nodes)} nodes")
+                                for node in nodes:
+                                    print(f"    - {node}")
                     except (KeyError, json.JSONDecodeError) as e:
                         print(f"Error processing message: {e}")
             except grpc.RpcError as e:

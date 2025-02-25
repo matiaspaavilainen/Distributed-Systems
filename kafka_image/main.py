@@ -70,7 +70,7 @@ def main(base_port, broker):
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT_BASE"))
-    broker = os.getenv("NODE_IP")
-    if not broker or not port:
-        raise ValueError("NODE_IP or PORT environment variable not set")
+    broker = os.getenv("POD_IP", "localhost")
+    if not port:
+        raise ValueError("PORT environment variable not set")
     main(port, broker)

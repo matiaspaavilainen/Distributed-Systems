@@ -41,10 +41,10 @@ spec:
                             fieldRef:
                                 fieldPath: metadata.name
 
-                      - name: VM_IP
+                      - name: POD_IP
                         valueFrom:
                             fieldRef:
-                                fieldPath: status.hostIP
+                                fieldPath: status.podIP
 
                       - name: PORT
                         value: "{base_port}"
@@ -62,8 +62,8 @@ spec:
                         value: "/app:/app/consumer:/app/producer"
                       - name: PORT_BASE
                         value: "{base_port}"
-                      - name: NODE_IP
-                        value: "{pod_name}"
+                      - name: POD_IP
+                        value: "{pod_ip}"
 ---
 # Internal service for gRPC
 apiVersion: v1

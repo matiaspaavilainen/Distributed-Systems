@@ -168,3 +168,18 @@ spec:
           port: 50051
           targetPort: 50051
     type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: gateway
+    namespace: default
+spec:
+    selector:
+        app: gateway
+    ports:
+        - protocol: TCP
+          port: 40404
+          targetPort: 40404
+          nodePort: 30404
+    type: NodePort

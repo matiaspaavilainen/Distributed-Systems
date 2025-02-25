@@ -358,25 +358,7 @@ sudo kubeadm join <control-plane-ip>:6443 --token <token> --discovery-token-ca-c
 # Back on Control Plane - Verify nodes are connected
 kubectl get nodes
 
-# Redeploy components
-kubectl apply -f deployments/zookeeper.yaml
-
-# wait
-kubectl apply -f deployments/kafka-broker.yaml
-kubectl apply -f deployments/mongodb-configmap.yaml
-kubectl apply -f deployments/mongodb-deployment.yaml
-kubectl apply -f deployments/server-deployment.yaml
-kubectl apply -f deployments/lookup.yaml
-
-# wait
-kubectl apply -f deployments/gateway.yaml
-kubectl apply -f deployments/proxy-nodes.yaml
-kubectl apply -f node_manager/templates/rbac.yaml
-kubectl apply -f deployments/node-manager.yaml
-
-# Verify deployment
-kubectl get pods -A
-stern gateway -c gateway
+# Follow from 7. Labelling in the startup instruction
 ```
 
 ### PROMETHEUS-GRAFANA

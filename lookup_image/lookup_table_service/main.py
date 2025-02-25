@@ -27,9 +27,9 @@ MONGO_URL = "mongodb://root:example@localhost:27017"
 # should be changed to be dynamic at some point
 PEER_LOOKUPS = [
     "lookup-service-control:50051",
-    "lookup-service-0:50051",
-    "lookup-service-1:50051",
-    "lookup-service-2:50051",
+    "worker-0:50051",
+    "worker-1:50051",
+    "worker-2:50051",
 ]
 GRPC_PORT = 50051
 

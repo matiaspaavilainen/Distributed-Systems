@@ -22,12 +22,13 @@ import grpc_server_SAND
 
 # Constants
 DEBUG = True
-VM_IP = os.getenv("VM_IP")
+POD_IP = os.getenv("POD_IP")
 POD_NAME = os.getenv("POD_NAME")
 MAIN_SERVER_ADDRESS = os.getenv("MAIN_SERVER_ADDRESS")
 
 # Use local MongoDB on worker node
-MONGO_URL = "mongodb://root:example@localhost:27017"
+mongo_service = f"worker-{POD_NAME.split("-")[2]}"
+MONGO_URL = f"mongodb://root:example@{mongo_service}:27017"
 
 # Topics
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
@@ -136,7 +137,7 @@ def get_node_address():
     except IndexError:
         raise RuntimeError(f"Unexpected pod name format: {POD_NAME}")
 
-    return f"{VM_IP}:30080:{grpc_nodeport}:{node_id}"
+    return f"{POD_IP}:30080:{grpc_nodeport}:{node_id}"
 
 
 def start_http_server(port):
