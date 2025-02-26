@@ -6,7 +6,7 @@ import data_pb2
 import data_pb2_grpc
 import grpc_main_server_db
 
-DEBUG = True
+DEBUG = False
 
 
 def get_data(db, name):
@@ -51,7 +51,17 @@ class RequestServicer(data_pb2_grpc.RequestServiceServicer):
         if feature is None:
             if DEBUG:
                 print("No data found, returning empty reply")
-            return data_pb2.RequestReply(data="")
+            # Return an empty but valid RequestReply object with default values
+            return data_pb2.RequestReply(
+                name="",
+                email="",
+                age=0,
+                address=data_pb2.Address(street="", city="", state="", zipCode=0),
+                created_at="",
+                orders=[],
+                status="",
+                premium=False,
+            )
         return feature
 
 
