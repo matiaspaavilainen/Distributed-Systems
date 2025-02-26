@@ -11,7 +11,11 @@ from pymongo import MongoClient
 
 from kafka_messaging.consumer import consumer_pb2, consumer_pb2_grpc
 from kafka_messaging.producer import producer_pb2, producer_pb2_grpc
-from grpc_sharing.grpc_sharing import broadcast_to_peers, start_grpc_server
+from grpc_sharing.grpc_sharing import (
+    broadcast_to_peers,
+    start_grpc_server_threaded,
+    get_channel,
+)
 
 # Constants
 kafka_port = int(os.getenv("KAFKA_SERVICE_PORT"))
@@ -24,8 +28,6 @@ LOOKUP_UPDATES_TOPIC = "lookup-updates"
 LOOKUP_TABLE_TOPIC = "lookup-table"
 
 MONGO_URL = "mongodb://root:example@localhost:27017"
-
-# should be changed to be dynamic at some point
 PEER_LOOKUPS = [
     "lookup-service-control:50051",
     "worker-0:50051",
@@ -134,7 +136,7 @@ def process_updates():
 
 
 def shutdown_gracefully(*args):
-    global server, vm_ip
+    global server_thread, vm_ip
     print("Received termination signal, shutting down gracefully...")
 
     # Stop accepting new requests
@@ -158,39 +160,44 @@ def shutdown_gracefully(*args):
     except Exception as e:
         print(f"Error during cleanup: {e}")
 
+    # time for messages to be sent
+    time.sleep(5)
+
     # Wait for Kafka consumer thread to finish
     if process_thread and process_thread.is_alive():
-        process_thread.join(timeout=5)
+        process_thread.join(timeout=10)
 
-    # Gracefully stop gRPC server
-    if server:
-        print("Stopping gRPC server...")
-        server.stop(grace=15)  # Give 5 seconds for ongoing RPCs to complete
-        server.wait_for_termination(timeout=15)
+    if server_thread and server_thread.is_alive():
+        server_thread.join(timeout=10)
 
     print("Shutdown complete")
     os._exit(0)
 
 
 def main():
-    global collection, process_thread, vector_clock, server, vm_ip
+    global collection, process_thread, vector_clock, server, vm_ip, server_thread
 
     vector_clock = VectorClock({})
     signal.signal(signal.SIGTERM, shutdown_gracefully)
 
-    client = MongoClient(MONGO_URL)
+    client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
     db = client["LOOKUP"]
     collection = db["lookup"]
     collection.drop()
     collection.create_index("address", unique=True)
 
-    # Start gRPC server
-    server = start_grpc_server(collection, vector_clock, GRPC_PORT, update_table)
-
     # Start Kafka consumer thread
     process_thread = threading.Thread(target=process_updates)
     process_thread.daemon = True
     process_thread.start()
+
+    # wait for kafka
+    time.sleep(5)
+
+    # Start gRPC server in its own thread
+    server_thread = start_grpc_server_threaded(
+        collection, vector_clock, GRPC_PORT, update_table
+    )
 
     print("Started service successfully")
 
@@ -200,9 +207,9 @@ def main():
                 process_thread = threading.Thread(target=process_updates)
                 process_thread.daemon = True
                 process_thread.start()
+
             time.sleep(5)
     except KeyboardInterrupt:
-        server.stop(0)
         shutdown_gracefully()
     except Exception as e:
         print(f"Error in main: {e}")

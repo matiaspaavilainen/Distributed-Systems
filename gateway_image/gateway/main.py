@@ -98,16 +98,23 @@ def listen_for_updates():
                         if message_type == "I":
                             for address in data:
                                 load_balancer.add_node(address)
+                            if DEBUG:
+                                # Simple output of the raw VM nodes structure
+                                print(f"Updated active nodes:")
+                                for vm_ip, nodes in load_balancer.vm_nodes.items():
+                                    print(f"  VM {vm_ip}: {len(nodes)} nodes")
+                                    for node in nodes:
+                                        print(f"    - {node}")
                         elif message_type == "D":
                             for address in data:
                                 load_balancer.remove_node(address)
-                        if DEBUG:
-                            # Simple output of the raw VM nodes structure
-                            print(f"Updated active nodes:")
-                            for vm_ip, nodes in load_balancer.vm_nodes.items():
-                                print(f"  VM {vm_ip}: {len(nodes)} nodes")
-                                for node in nodes:
-                                    print(f"    - {node}")
+                            if DEBUG:
+                                # Simple output of the raw VM nodes structure
+                                print(f"Updated active nodes:")
+                                for vm_ip, nodes in load_balancer.vm_nodes.items():
+                                    print(f"  VM {vm_ip}: {len(nodes)} nodes")
+                                    for node in nodes:
+                                        print(f"    - {node}")
                     except (KeyError, json.JSONDecodeError) as e:
                         print(f"Error processing message: {e}")
             except grpc.RpcError as e:
