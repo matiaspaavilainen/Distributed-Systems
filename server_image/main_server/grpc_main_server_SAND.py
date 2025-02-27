@@ -58,7 +58,7 @@ class RequestServicer(data_pb2_grpc.RequestServiceServicer):
                 age=0,
                 address=data_pb2.Address(street="", city="", state="", zipCode=0),
                 created_at="",
-                orders=[],
+                orders=0,
                 status="",
                 premium=False,
             )

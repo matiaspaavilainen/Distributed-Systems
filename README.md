@@ -193,7 +193,7 @@ stern --version
     # Check gateway logs with stern
     stern control -c gateway
     # When it shows 3 nodes for 3 VMs, its ready to accept requests.
-    # NOTE: can take up to 2 minutes, but just wait
+    # NOTE: can take up to 2 minutes, just wait
 
     # Get VM's IP
     ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -n 1
@@ -361,23 +361,3 @@ kubectl get nodes
 
 # Follow from 7. Labelling in the startup instruction
 ```
-
-### PROMETHEUS-GRAFANA
-
-Install the prometheus-grafana stack using this tutorial
-<https://medium.com/@akilblanchard09/monitoring-a-kubernetes-cluster-using-prometheus-and-grafana-8e0f21805ea9>
-Create a service
-
-1. minikube service grafana-ext --url -n monitoring
-
-    Get the name of the kubernetes pod to port forward it
-
-2. kubectl get pods -n monitoring
-
-3. kubectl --namespace monitoring port-forward <name of the grafana pod> 3000
-
-    You can now access the grafana dashboard in
-
-4. <http://localhost:3000>
-
-look up the ip address of the prometheus-server and add it as a data source for grafana
