@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Common resources used in the gRPC route guide example."""
-import os
 from pymongo import MongoClient
 
 MONGO_URL = "mongodb://root:example@localhost:27017"

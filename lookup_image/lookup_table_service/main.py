@@ -14,7 +14,6 @@ from kafka_messaging.producer import producer_pb2, producer_pb2_grpc
 from grpc_sharing.grpc_sharing import (
     broadcast_to_peers,
     start_grpc_server_threaded,
-    get_channel,
 )
 
 # Constants
