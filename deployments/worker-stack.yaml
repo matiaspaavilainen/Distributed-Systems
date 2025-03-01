@@ -120,6 +120,10 @@ spec:
                         value: "/app/consumer:/app/producer"
                       - name: PORT_BASE
                         value: "2050"
+                      - name: POD_IP
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: status.podIP
                 # NODE MANAGER
                 - name: node-manager
                   image: matiaspaavilainen/distributed-systems:node_manager

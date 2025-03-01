@@ -59,7 +59,7 @@ spec:
                   readinessProbe:
                       tcpSocket:
                           port: 9092
-                      initialDelaySeconds: 20
+                      initialDelaySeconds: 25
                       periodSeconds: 5
                   env:
                       - name: POD_NAME
