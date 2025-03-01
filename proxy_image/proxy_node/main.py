@@ -18,9 +18,8 @@ from messaging import (
 import grpc_client_SAND
 import grpc_server_SAND
 
-# Constants
 DEBUG = True
-VM_IP = os.getenv("VM_IP")
+SERVICE_NAME = os.getenv("SERVICE_NAME")
 POD_NAME = os.getenv("POD_NAME")
 MAIN_SERVER_ADDRESS = "server-service.default.svc.cluster.local:40002"
 
@@ -98,12 +97,6 @@ def process_item_response(item, query):
     return user_data
 
 
-def parse_node_address(address):
-    """Parse the combined address format into gRPC address"""
-    vm_ip, _, grpc_nodeport = address.split(":")
-    return f"{vm_ip}:{grpc_nodeport}"  # Use NodePort for gRPC
-
-
 def find_item_from_any_db(query):
     item = search_local_db(query)
     if item is not None:
@@ -116,8 +109,7 @@ def find_item_from_any_db(query):
         if query in values:
             if DEBUG:
                 print(f"Item found in lookup table at {address}")
-            grpc_address = parse_node_address(address)
-            item = grpc_client_SAND.run(query, grpc_address)
+            item = grpc_client_SAND.run(query, address)
             result = process_item_response(item, query)
             if result:
                 return result
@@ -130,15 +122,10 @@ def find_item_from_any_db(query):
 
 def get_own_lookup_entry():
     """Get the node's own lookup entry in the correct format"""
-    try:
-        node_id = POD_NAME.split("-")[3]
-        worker_num = POD_NAME.split("-")[2]
-        grpc_nodeport = 30100 + (int(worker_num) * 100) + int(node_id)
-
-    except IndexError:
-        raise RuntimeError(f"Unexpected pod name format: {POD_NAME}")
-
-    return f"{VM_IP}:30080:{grpc_nodeport}"
+    # Use the service name from environment variable
+    node_id = POD_NAME.split("-")[3]
+    grpc_port = 50060 + (int(node_id) * 10)
+    return f"{SERVICE_NAME}:{grpc_port}"
 
 
 def start_http_server(port):

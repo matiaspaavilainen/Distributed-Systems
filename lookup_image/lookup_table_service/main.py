@@ -39,7 +39,6 @@ GRPC_PORT = 50051
 stop_event = threading.Event()
 collection = None
 process_thread = None
-server = None
 
 
 @dataclass
@@ -58,6 +57,7 @@ def broadcast_table():
                 topic=LOOKUP_TABLE_TOPIC, data=json.dumps(table_data)
             )
             stub.SendMessage(request)
+            print("Lookuptable:", table_data)
     except Exception as e:
         print(f"Error broadcasting table: {e}")
 
@@ -174,7 +174,7 @@ def shutdown_gracefully(*args):
 
 
 def main():
-    global collection, process_thread, vector_clock, server, vm_ip, server_thread
+    global collection, process_thread, vector_clock, server_thread
 
     vector_clock = VectorClock({})
     signal.signal(signal.SIGTERM, shutdown_gracefully)

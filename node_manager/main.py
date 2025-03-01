@@ -23,7 +23,7 @@ def initialize_k8s():
 # prometheus-prometheus-pushgateway.monitoring.svc.cluster.local:9091
 
 
-def fill_template(template, node_id, ports, worker_num, pod_ip):
+def fill_template(template, node_id, ports, worker_num, pod_ip, service_name):
     """Fill template with node ID and port values"""
     filled = copy.deepcopy(template)
 
@@ -38,6 +38,7 @@ def fill_template(template, node_id, ports, worker_num, pod_ip):
                         "id": str(node_id),
                         "worker_num": worker_num,
                         "pod_ip": pod_ip,
+                        "service_name": service_name,
                     }
 
                     # Add port replacements
@@ -70,27 +71,35 @@ def create_node(k8s_apps, k8s_core, template, node_id, worker_num, pod_ip):
     base_port = 50060
 
     port_offset = node_id * 10
-    # Calculate unique NodePort: 30000 + (worker * 100) + node_id
-    # Example: worker-1, node 2 -> 30102
-    grpc_nodeport = 30000 + (worker_num * 100) + node_id
+
+    # Generate service name for Kubernetes DNS
+    service_name = f"proxy-node-{worker_num}-{node_id}-grpc"
 
     ports = {
         "base_port": int(base_port + port_offset),
         "http_port": int(base_port + port_offset + 1),
         "grpc_port": int(base_port + port_offset),
-        "grpc_nodeport": grpc_nodeport,
     }
 
     print(f"Creating node {node_id} with ports: {ports} on worker-{worker_num}")
+    print(
+        f"Service DNS name: {service_name}.default.svc.cluster.local:{ports['grpc_port']}"
+    )
 
     # Create deployment and services using filled templates
-    deployment = fill_template(template[0], node_id, ports, worker_num, pod_ip)
+    deployment = fill_template(
+        template[0], node_id, ports, worker_num, pod_ip, service_name
+    )
     k8s_apps.create_namespaced_deployment(body=deployment, namespace="default")
 
-    grpc_service = fill_template(template[1], node_id, ports, worker_num, pod_ip)
+    grpc_service = fill_template(
+        template[1], node_id, ports, worker_num, pod_ip, service_name
+    )
     k8s_core.create_namespaced_service(body=grpc_service, namespace="default")
 
-    http_service = fill_template(template[2], node_id, ports, worker_num, pod_ip)
+    http_service = fill_template(
+        template[2], node_id, ports, worker_num, pod_ip, service_name
+    )
     k8s_core.create_namespaced_service(body=http_service, namespace="default")
 
 

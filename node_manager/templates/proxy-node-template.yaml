@@ -39,10 +39,8 @@ spec:
                             fieldRef:
                                 fieldPath: metadata.name
 
-                      - name: POD_IP
-                        valueFrom:
-                            fieldRef:
-                                fieldPath: status.podIP
+                      - name: SERVICE_NAME
+                        value: "{service_name}"
 
                       - name: PORT
                         value: "{base_port}"
@@ -67,7 +65,7 @@ kind: Service
 metadata:
     name: proxy-node-{worker_num}-{id}-grpc
 spec:
-    type: NodePort
+    type: ClusterIP
     selector:
         app: proxy-node
         instance: "{id}"
@@ -76,7 +74,6 @@ spec:
         - name: grpc
           port: "{grpc_port}"
           targetPort: "{grpc_port}"
-          nodePort: "{grpc_nodeport}"
 
 ---
 # External service for HTTP
