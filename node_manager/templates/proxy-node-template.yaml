@@ -39,7 +39,7 @@ spec:
                             fieldRef:
                                 fieldPath: metadata.name
 
-                      - name: VM_IP
+                      - name: POD_IP
                         valueFrom:
                             fieldRef:
                                 fieldPath: status.podIP
@@ -57,6 +57,7 @@ spec:
                         value: "/app:/app/consumer:/app/producer"
                       - name: PORT_BASE
                         value: "{base_port}"
+                        # different from the other pod ip in this don't change
                       - name: POD_IP
                         value: "{pod_ip}"
 ---
