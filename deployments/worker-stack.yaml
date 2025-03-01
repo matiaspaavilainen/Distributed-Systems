@@ -110,7 +110,7 @@ spec:
                       - name: VM_IP
                         valueFrom:
                             fieldRef:
-                                fieldPath: status.hostIP
+                                fieldPath: status.podIP
 
                 - name: kafka-service-lookup
                   image: matiaspaavilainen/distributed-systems:kafka_services

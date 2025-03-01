@@ -42,7 +42,7 @@ spec:
                       - name: VM_IP
                         valueFrom:
                             fieldRef:
-                                fieldPath: status.hostIP
+                                fieldPath: status.podIP
 
                       - name: PORT
                         value: "{base_port}"
