@@ -55,43 +55,47 @@ def search_local_db(query):
 
 def process_item_response(item, query):
     """Helper function to process item response and update local storage"""
-    if item:
-        # Handle both dictionary and object responses
-        if isinstance(item, dict):
-            # If it's from MongoDB, it's already in the right format
-            # Just need to remove _id field
-            user_data = item.copy()
-            user_data.pop("_id", None)
-        else:
-            # If it's from gRPC, need to convert from object
-            user_data = {
-                "name": query,
-                "email": item.email,
-                "age": item.age,
-                "address": {
-                    "street": item.address.street,
-                    "city": item.address.city,
-                    "state": item.address.state,
-                    "zipCode": item.address.zipCode,
-                },
-                "created_at": item.created_at,
-                "orders": item.orders,
-                "status": item.status,
-                "premium": item.premium,
-            }
+    if item is None:
+        return None
 
-        # Insert into MongoDB (will create its own _id)
-        collection.insert_one(user_data.copy())
-        print("Added " + str(user_data.get("name")) + " to the local database")
-        update_lookup_table(
-            {get_own_lookup_entry(): [query]},
-            message_type="A",
-            received_from_message=False,
-            kafka_producer_port=KAFKA_PROD_PORT,
-            topic=NODE_UPDATES,
-        )
-        return user_data
-    return None
+    # For gRPC responses, check if it's an empty response
+    if hasattr(item, "name") and not item.name:
+        return None
+    # Handle both dictionary and object responses
+    if isinstance(item, dict):
+        # If it's from MongoDB, it's already in the right format
+        # Just need to remove _id field
+        user_data = item.copy()
+        user_data.pop("_id", None)
+    else:
+        # If it's from gRPC, need to convert from object
+        user_data = {
+            "name": query,
+            "email": item.email,
+            "age": item.age,
+            "address": {
+                "street": item.address.street,
+                "city": item.address.city,
+                "state": item.address.state,
+                "zipCode": item.address.zipCode,
+            },
+            "created_at": item.created_at,
+            "orders": item.orders,
+            "status": item.status,
+            "premium": item.premium,
+        }
+
+    # Insert into MongoDB (will create its own _id)
+    collection.insert_one(user_data.copy())
+    print("Added " + str(user_data.get("name")) + " to the local database")
+    update_lookup_table(
+        {get_own_lookup_entry(): [query]},
+        message_type="A",
+        received_from_message=False,
+        kafka_producer_port=KAFKA_PROD_PORT,
+        topic=NODE_UPDATES,
+    )
+    return user_data
 
 
 def parse_node_address(address):
