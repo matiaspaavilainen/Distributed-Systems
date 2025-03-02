@@ -1,5 +1,4 @@
----
-# 1. Keep the ClusterIP service as backend for Ingress
+# Backend for ingress, collects all proxy-node http ports
 apiVersion: v1
 kind: Service
 metadata:
@@ -17,15 +16,12 @@ spec:
           port: 80
           targetPort: http
 ---
-# 2. Create Ingress resource for external access
+# Ingress for external access
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
     name: proxy-node-ingress
     annotations:
-        # Basic configuration
-        kubernetes.io/ingress.class: "nginx"
-
         # Load balancing configuration
         nginx.ingress.kubernetes.io/load-balance: "round_robin"
 
@@ -35,14 +31,13 @@ metadata:
         # Session handling
         nginx.ingress.kubernetes.io/affinity: "none"
 
-        # SSL/TLS configuration if needed
-        # nginx.ingress.kubernetes.io/ssl-redirect: "true"
-
         # Timeouts
         nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
         nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
         nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
 spec:
+    # Add this line to replace the deprecated annotation
+    ingressClassName: nginx
     rules:
         - http:
               paths:
@@ -54,7 +49,6 @@ spec:
                             port:
                                 name: http
 ---
-# 3. Configure NodePort on the Ingress Controller (if needed for specific port)
 # Note: This is typically configured on the ingress controller deployment itself
 apiVersion: v1
 kind: Service

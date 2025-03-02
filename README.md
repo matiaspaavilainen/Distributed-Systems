@@ -168,11 +168,10 @@ stern --version
 
 ### Deploy Application Components
 
-# RE-BUILD DOCKER IMAGES WITH CODE FROM THIS BRANCH
-
 1. **Deploy control stack**
 
     ```bash
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.0/deploy/static/provider/cloud/deploy.yaml
     kubectl apply -f deployments/mongodb-configmap.yaml
     kubectl apply -f deployments/proxy-node-balancer.yaml
     kubectl apply -f deployments/control-stack.yaml
@@ -200,9 +199,10 @@ stern --version
     ```
 
     **Network Access Note**:
+    - **cPouta**: http://CONTROL_VM_PUBLIC_IP:30080/resource/John%20Williams
     - **Multipass**: Uses private IP, directly accessible from host
     - **VirtualBox**:
-    NOT TESTED MIGHT WORK MIGHT NOT
+
       1. Use "Bridged Adapter" in VM network settings
       2. Or use "Host-only Adapter" with IP range 192.168.56.0/24
       3. Or use Port Forwarding with NAT:
@@ -273,6 +273,9 @@ stern --version
     # Find the port of prometheus-server-ext with
     kubectl get svc prometheus-server-ext -n monitoring -o jsonpath='{.spec.ports[0].nodePort}'
 
+    # data source from the ingress gateway
+    kubectl apply -f deployments/prometheus-monitoring.yaml
+    
     # Prometheus dashboard should now be available at
     # http://VM_IP:prometheus-server-ext port
     ```
