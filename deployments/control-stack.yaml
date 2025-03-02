@@ -40,7 +40,7 @@ spec:
                   readinessProbe:
                       tcpSocket:
                           port: 2181
-                      initialDelaySeconds: 15
+                      initialDelaySeconds: 10
                       periodSeconds: 5
                   env:
                       - name: ALLOW_ANONYMOUS_LOGIN
@@ -59,7 +59,7 @@ spec:
                   readinessProbe:
                       tcpSocket:
                           port: 9092
-                      initialDelaySeconds: 25
+                      initialDelaySeconds: 10
                       periodSeconds: 5
                   env:
                       - name: POD_NAME
@@ -82,7 +82,7 @@ spec:
                   readinessProbe:
                       tcpSocket:
                           port: 27017
-                      initialDelaySeconds: 15
+                      initialDelaySeconds: 10
                       periodSeconds: 5
                   env:
                       - name: MONGO_INITDB_ROOT_USERNAME
@@ -106,7 +106,7 @@ spec:
                   readinessProbe:
                       tcpSocket:
                           port: 50051
-                      initialDelaySeconds: 25 # Wait for kafka
+                      initialDelaySeconds: 10
                       periodSeconds: 5
                   env:
                       - name: PYTHONPATH
@@ -124,29 +124,29 @@ spec:
                         value: "/app/consumer:/app/producer"
 
                 # GATEWAY
-                - name: gateway
-                  image: matiaspaavilainen/distributed-systems:gateway
-                  imagePullPolicy: Always
-                  readinessProbe:
-                      tcpSocket:
-                          port: 40404
-                      initialDelaySeconds: 30 # Wait for lookup
-                      periodSeconds: 5
-                  env:
-                      - name: PYTHONPATH
-                        value: "/app:/app/kafka_messaging/consumer"
-                        # NEEDS TO MATCH THE KAFKA SERVICE PORT BELOW
-                      - name: KAFKA_SERVICE_PORT
-                        value: "2000"
+                # - name: gateway
+                #   image: matiaspaavilainen/distributed-systems:gateway
+                #   imagePullPolicy: Always
+                #   readinessProbe:
+                #       tcpSocket:
+                #           port: 40404
+                #       initialDelaySeconds: 10
+                #       periodSeconds: 5
+                #   env:
+                #       - name: PYTHONPATH
+                #         value: "/app:/app/kafka_messaging/consumer"
+                #         # NEEDS TO MATCH THE KAFKA SERVICE PORT BELOW
+                #       - name: KAFKA_SERVICE_PORT
+                #         value: "2000"
 
-                - name: kafka-service-gateway
-                  image: matiaspaavilainen/distributed-systems:kafka_services
-                  imagePullPolicy: Always
-                  env:
-                      - name: PYTHONPATH
-                        value: "/app/consumer:/app/producer"
-                      - name: PORT_BASE
-                        value: "2000"
+                # - name: kafka-service-gateway
+                #   image: matiaspaavilainen/distributed-systems:kafka_services
+                #   imagePullPolicy: Always
+                #   env:
+                #       - name: PYTHONPATH
+                #         value: "/app/consumer:/app/producer"
+                #       - name: PORT_BASE
+                #         value: "2000"
 
             volumes:
                 - name: mongo-init
@@ -178,18 +178,18 @@ spec:
           port: 50051
           targetPort: 50051
     type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-    name: gateway
-    namespace: default
-spec:
-    selector:
-        app: control
-    ports:
-        - protocol: TCP
-          port: 40404
-          targetPort: 40404
-          nodePort: 30404
-    type: NodePort
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#     name: gateway
+#     namespace: default
+# spec:
+#     selector:
+#         app: control
+#     ports:
+#         - protocol: TCP
+#           port: 40404
+#           targetPort: 40404
+#           nodePort: 30404
+#     type: NodePort
