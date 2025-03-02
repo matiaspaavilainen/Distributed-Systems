@@ -202,7 +202,8 @@ stern --version
     # Check gateway logs with stern
     stern control -c lookup
     # When lookuptable has 9 entries its good
-    # NOTE: can take up to 2 minutes, just wait
+    # NOTE: can take up to 5 minutes, just wait
+    # ready checks make starting quite slow, but atleast it works properly
 
     # Get VM's IP
     ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -n 1
