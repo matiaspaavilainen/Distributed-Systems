@@ -107,10 +107,10 @@ spec:
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing/"
                       - name: KAFKA_SERVICE_PORT
                         value: "2050"
-                      - name: VM_IP
+                      - name: WORKER_NAME
                         valueFrom:
                             fieldRef:
-                                fieldPath: status.podIP
+                                fieldPath: metadata.name
 
                 - name: kafka-service-lookup
                   image: matiaspaavilainen/distributed-systems:kafka_services

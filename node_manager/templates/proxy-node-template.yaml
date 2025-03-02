@@ -25,6 +25,16 @@ spec:
                                   statefulset.kubernetes.io/pod-name: worker-{worker_num}
                           topologyKey: kubernetes.io/hostname
             containers:
+                - name: kafka-services
+                  image: matiaspaavilainen/distributed-systems:kafka_services
+                  imagePullPolicy: Always
+                  env:
+                      - name: PYTHONPATH
+                        value: "/app:/app/consumer:/app/producer"
+                      - name: PORT_BASE
+                        value: "{base_port}"
+                      - name: POD_IP
+                        value: "{pod_ip}"
                 - name: proxy-node
                   image: matiaspaavilainen/distributed-systems:proxy_node
                   imagePullPolicy: Always # REMOVE WHEN NO NEED TO CHANGE CODE
@@ -47,17 +57,6 @@ spec:
 
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_server"
-                - name: kafka-services
-                  image: matiaspaavilainen/distributed-systems:kafka_services
-                  imagePullPolicy: Always
-                  env:
-                      - name: PYTHONPATH
-                        value: "/app:/app/consumer:/app/producer"
-                      - name: PORT_BASE
-                        value: "{base_port}"
-                        # different from the other pod ip in this don't change
-                      - name: POD_IP
-                        value: "{pod_ip}"
 ---
 # Internal service for gRPC
 apiVersion: v1
