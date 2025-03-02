@@ -239,7 +239,7 @@ stern --version
     # NAT with port forwarding: Use localhost
     curl http://localhost:30404/resource/John%20Williams
 
-### PROMETHEUS & MONITORING
+### PROMETHEUS & MONITORING (Simplified for Metrics-Based Autoscaling)
 
 1. **Install helm**
 
@@ -251,7 +251,7 @@ stern --version
     sudo apt-get install helm
     ```
 
-2. **Install kube-prometheus-stack** (includes Prometheus Operator with CRDs)
+2. **Install Prometheus with in-memory storage**
 
     ```bash
     # Create monitoring namespace
@@ -261,63 +261,44 @@ stern --version
     helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
     helm repo update
 
-    # Create local storage for Prometheus
-    sudo mkdir -p /mnt/prometheus-server
-    sudo chmod 777 /mnt/prometheus-server
-
-    # Get node name for storage config
-    NODE_NAME=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')
-    sed -i "s/YOUR_NODE_NAME/$NODE_NAME/g" deployments/prometheus-storage.yaml
-    kubectl apply -f deployments/prometheus-storage.yaml
-
-    # Deploy kube-prometheus-stack with values and default service monitors
+    # Install Prometheus with minimal configuration and emptyDir (no persistent storage)
     helm install prometheus prometheus-community/kube-prometheus-stack \
       --namespace monitoring \
       --set prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues=false \
       --set prometheus.prometheusSpec.servicemonitorSelectorNilUsesHelmValues=false \
-      --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.storageClassName=local-storage \
-      --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.accessModes[0]=ReadWriteOnce \
-      --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=8Gi
+      --set prometheus.prometheusSpec.retention=12h \
+      --set prometheus.prometheusSpec.resources.requests.memory=256Mi \
+      --set prometheus.prometheusSpec.resources.limits.memory=512Mi \
+      --set prometheus.prometheusSpec.storageSpec.emptyDir.medium="" \
+      --set prometheus.prometheusSpec.storageSpec.emptyDir.sizeLimit=2Gi \
+      --set prometheusOperator.resources.requests.memory=100Mi \
+      --set prometheusOperator.resources.limits.memory=200Mi \
+      --set alertmanager.enabled=false
 
-    # Wait for CRDs to become available
-    echo "Waiting for ServiceMonitor CRDs to be ready..."
-    kubectl wait --for condition=established --timeout=60s \
-      crd/servicemonitors.monitoring.coreos.com
+    # Wait for Prometheus to be ready
+    echo "Waiting for Prometheus components to start..."
+    kubectl -n monitoring wait --for=condition=available deployment prometheus-kube-prometheus-operator --timeout=120s
 
-    # Now create a dedicated NodePort service for external access to Prometheus
-    cat <<EOF | kubectl apply -f -
-    apiVersion: v1
-    kind: Service
-    metadata:
-      name: prometheus-server-public
-      namespace: monitoring
-    spec:
-      type: NodePort
-      ports:
-      - port: 9090
-        targetPort: 9090
-        nodePort: 30909
-        name: http
-      selector:
-        app.kubernetes.io/name: prometheus
-        prometheus: prometheus-kube-prometheus-prometheus
-    EOF
+    # Create external access
+    kubectl apply -f deployments/prometheus-service.yaml
 
-    # Create ServiceMonitor for ingress and proxy nodes
+    # Create ServiceMonitor for proxy-node metrics
     kubectl apply -f deployments/prometheus-monitoring.yaml
     ```
 
-3. **Install Grafana**
+3. **Install Grafana with dashboard for proxy metrics**
 
     ```bash
     helm repo add grafana https://grafana.github.io/helm-charts
     helm repo update
-    
-    # Install Grafana with NodePort for easy access
+
     helm install grafana grafana/grafana \
       --namespace monitoring \
       --set service.type=NodePort \
-      --set service.nodePort=30300
+      --set service.nodePort=30300 \
+      --set persistence.enabled=false \
+      --set resources.requests.memory=100Mi \
+      --set resources.limits.memory=200Mi
     
     # Get admin password
     kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
@@ -326,8 +307,17 @@ stern --version
     NODE_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -n 1)
     echo "Grafana dashboard available at: http://$NODE_IP:30300"
     echo "Log in with username: admin and the password displayed above"
-    echo "After login, add Prometheus data source: http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090"
+    echo "After login, add Prometheus data source: http://VM_PUBLIC_IP:30909"
     ```
+
+4. **Add basic Grafana dashboard for proxy metrics**
+
+   After logging into Grafana, create a new dashboard with these panels:
+
+   1. **Request Rate**: `sum(rate(nginx_ingress_controller_requests[5m]))`
+   2. **Error Rate**: `sum(rate(nginx_ingress_controller_requests{status=~"5.*"}[5m]))`
+   3. **Average Response Time**: `sum(rate(nginx_ingress_controller_request_duration_seconds_sum[5m])) / sum(rate(nginx_ingress_controller_request_duration_seconds_count[5m]))`
+   4. **CPU Usage**: `sum(rate(container_cpu_usage_seconds_total{pod=~"proxy-node.*"}[5m]))`
 
 ## Stopping and Restarting
 
@@ -342,7 +332,6 @@ kubectl delete configmap mongodb-config
 helm uninstall prometheus -n monitoring
 helm uninstall grafana -n monitoring
 kubectl delete namespace monitoring
-kubectl delete -f deployments/prometheus-storage.yaml
 # Delete any leftover resources
 kubectl delete pods,services,deployments,statefulsets,configmaps,ingress --all --all-namespaces
 
