@@ -32,6 +32,21 @@ spec:
                           topologyKey: "kubernetes.io/hostname"
 
             containers:
+                # MONGODB
+                - name: mongodb
+                  image: mongo:latest
+                  ports:
+                      - containerPort: 27017
+                  readinessProbe:
+                      tcpSocket:
+                          port: 27017
+                      initialDelaySeconds: 10
+                      periodSeconds: 5
+                  env:
+                      - name: MONGO_INITDB_ROOT_USERNAME
+                        value: "root"
+                      - name: MONGO_INITDB_ROOT_PASSWORD
+                        value: "example"
                 # ZOOKEEPER
                 - name: zookeeper
                   image: bitnami/zookeeper:latest
@@ -40,7 +55,7 @@ spec:
                   readinessProbe:
                       tcpSocket:
                           port: 2181
-                      initialDelaySeconds: 15
+                      initialDelaySeconds: 10
                       periodSeconds: 5
                   env:
                       - name: ALLOW_ANONYMOUS_LOGIN
@@ -59,7 +74,7 @@ spec:
                   readinessProbe:
                       tcpSocket:
                           port: 9092
-                      initialDelaySeconds: 20
+                      initialDelaySeconds: 10
                       periodSeconds: 5
                   env:
                       - name: KAFKA_CFG_ZOOKEEPER_CONNECT
@@ -78,21 +93,6 @@ spec:
                         value: "PLAINTEXT://0.0.0.0:9092"
                       - name: KAFKA_CFG_ADVERTISED_LISTENERS
                         value: "PLAINTEXT://$(POD_IP):9092"
-                # MONGODB
-                - name: mongodb
-                  image: mongo:latest
-                  ports:
-                      - containerPort: 27017
-                  readinessProbe:
-                      tcpSocket:
-                          port: 27017
-                      initialDelaySeconds: 15
-                      periodSeconds: 5
-                  env:
-                      - name: MONGO_INITDB_ROOT_USERNAME
-                        value: "root"
-                      - name: MONGO_INITDB_ROOT_PASSWORD
-                        value: "example"
                 # LOOKUP
                 - name: lookup
                   image: matiaspaavilainen/distributed-systems:lookup_service
@@ -100,12 +100,8 @@ spec:
                   readinessProbe:
                       tcpSocket:
                           port: 50051
-                      initialDelaySeconds: 25 # Wait for kafka
+                      initialDelaySeconds: 10
                       periodSeconds: 5
-                  lifecycle:
-                      postStart:
-                          exec:
-                              command: ["sleep", "5"]
                   env:
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing/"
