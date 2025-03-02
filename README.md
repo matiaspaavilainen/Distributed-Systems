@@ -231,7 +231,9 @@ stern --version
     **Test the service**:
 
     ```bash
-    # From VM
+    # Good one for chekcign where each request gets routed
+    stern proxy-node -c proxy-node | grep found
+    
     curl http://$VM_IP:30404/resource/John%20Williams
 
     # From host (based on your VM setup):
@@ -239,6 +241,7 @@ stern --version
     curl http://<VM_IP>:30404/resource/John%20Williams
     # NAT with port forwarding: Use localhost
     curl http://localhost:30404/resource/John%20Williams
+    ```
 
 ### PROMETHEUS & MONITORING (Simplified for Metrics-Based Autoscaling)
 
