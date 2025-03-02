@@ -2,12 +2,13 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
     name: proxy-node-monitor
-    # This should match the namespace where your Prometheus operator is installed
     namespace: monitoring
     labels:
-        # These labels should match the Prometheus instance's serviceMonitorSelector
-        release: prometheus
+        release: prometheus # Match the helm release name
 spec:
+    namespaceSelector:
+        matchNames:
+            - default
     selector:
         matchLabels:
             app: proxy-node
