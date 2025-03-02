@@ -9,6 +9,7 @@ import consumer_pb2_grpc
 
 
 class ConsumerService(consumer_pb2_grpc.ConsumerServicer):
+
     def __init__(self, stop_event, broker_address):
         self.consumers = {}
         self.stop_event = stop_event
@@ -16,45 +17,13 @@ class ConsumerService(consumer_pb2_grpc.ConsumerServicer):
 
     def get_consumer(self, topic):
         if topic not in self.consumers:
-            # Add retry logic for consumer creation
-            max_retries = 10
-            retry_delay = 5
-            last_exception = None
-
-            for attempt in range(max_retries):
-                try:
-                    print(
-                        f"Attempting to create consumer for topic {topic} (attempt {attempt+1}/{max_retries})"
-                    )
-                    consumer = KafkaConsumer(
-                        topic,
-                        bootstrap_servers=[self.broker_address],
-                        value_deserializer=lambda v: json.loads(v.decode("utf-8")),
-                        auto_offset_reset="latest",
-                        enable_auto_commit=False,
-                        # Add shorter timeouts for faster failures during retry
-                        session_timeout_ms=10000,
-                        request_timeout_ms=15000,
-                        connections_max_idle_ms=30000,
-                    )
-                    # Test the connection by listing topics
-                    consumer.topics()
-                    self.consumers[topic] = consumer
-                    print(f"Successfully created consumer for topic {topic}")
-                    break
-                except Exception as e:
-                    last_exception = e
-                    print(
-                        f"Failed to create consumer (attempt {attempt+1}/{max_retries}): {str(e)}"
-                    )
-                    if attempt < max_retries - 1:
-                        print(f"Retrying in {retry_delay} seconds...")
-                        time.sleep(retry_delay)
-
-            if topic not in self.consumers:
-                print(f"Failed to create consumer after {max_retries} attempts")
-                raise last_exception
-
+            self.consumers[topic] = KafkaConsumer(
+                topic,
+                bootstrap_servers=[self.broker_address],
+                value_deserializer=lambda v: json.loads(v.decode("utf-8")),
+                auto_offset_reset="latest",
+                enable_auto_commit=False,
+            )
         return self.consumers[topic]
 
     def GetLatestMessage(self, request, context):

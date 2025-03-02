@@ -17,8 +17,8 @@ from grpc_sharing.grpc_sharing import (
 )
 
 # Constants
+WORKER_NAME = os.getenv("WORKER_NAME")
 kafka_port = int(os.getenv("KAFKA_SERVICE_PORT"))
-vm_ip = os.getenv("VM_IP")
 CONSUMER_PORT = kafka_port + 2
 PRODUCER_PORT = kafka_port + 3
 
@@ -33,7 +33,7 @@ PEER_LOOKUPS = [
     "worker-1:50051",
     "worker-2:50051",
 ]
-GRPC_PORT = 50051
+GRPC_SERVER_PORT = 50051
 
 # Global variables
 stop_event = threading.Event()
@@ -135,7 +135,7 @@ def process_updates():
 
 
 def shutdown_gracefully(*args):
-    global server_thread, vm_ip
+    global server_thread
     print("Received termination signal, shutting down gracefully...")
 
     # Stop accepting new requests
@@ -145,21 +145,30 @@ def shutdown_gracefully(*args):
         # Get all entries for this node and remove them
         entries_to_delete = []
 
-        # Find all entries that belong to this node
+        worker_num = WORKER_NAME.split("-")[1]  # Extract the number (e.g. "0")
+
+        # Find all entries that belong to this worker node
+        # Format: "proxy-node-0-1-grpc.default.svc.cluster.local:50060"
         for doc in collection.find():
             address = doc["address"]
-            if address.startswith(vm_ip):
+
+            # Check if the service name contains the worker's ID as the first number
+            # We're looking for "proxy-node-{worker_num}-" pattern
+            if f"proxy-node-{worker_num}-" in address:
                 entries_to_delete.append(address)
+                print(f"Found entry to delete: {address}")
 
         # If we have entries to delete, update the table
         if entries_to_delete:
-            print(f"Cleaning up {len(entries_to_delete)} entries for {vm_ip}")
+            print(f"Cleaning up {len(entries_to_delete)} entries for {WORKER_NAME}")
             update_table(entries_to_delete, "D", from_peer=False)
+        else:
+            print(f"No entries found for worker {WORKER_NAME}")
 
     except Exception as e:
         print(f"Error during cleanup: {e}")
 
-    # time for messages to be sent
+    # Time for messages to be sent
     time.sleep(5)
 
     # Wait for Kafka consumer thread to finish
@@ -195,7 +204,7 @@ def main():
 
     # Start gRPC server in its own thread
     server_thread = start_grpc_server_threaded(
-        collection, vector_clock, GRPC_PORT, update_table
+        collection, vector_clock, GRPC_SERVER_PORT, update_table
     )
 
     print("Started service successfully")

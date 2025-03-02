@@ -9,38 +9,13 @@ import producer_pb2_grpc
 
 
 class ProducerService(producer_pb2_grpc.ProducerServicer):
-    def __init__(self, stop_event, broker_address):
-        # Add retry logic for producer creation
-        max_retries = 10
-        retry_delay = 5
-        self.stop_event = stop_event
 
-        for attempt in range(max_retries):
-            try:
-                print(
-                    f"Attempting to create Kafka producer (attempt {attempt+1}/{max_retries})"
-                )
-                self.producer = KafkaProducer(
-                    bootstrap_servers=[broker_address],
-                    value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-                    # Add shorter timeouts for faster failures during retry
-                    request_timeout_ms=15000,
-                    connections_max_idle_ms=30000,
-                )
-                # Test the connection
-                self.producer.bootstrap_connected()
-                print("Successfully created Kafka producer")
-                return
-            except Exception as e:
-                print(
-                    f"Failed to create producer (attempt {attempt+1}/{max_retries}): {str(e)}"
-                )
-                if attempt < max_retries - 1:
-                    print(f"Retrying in {retry_delay} seconds...")
-                    time.sleep(retry_delay)
-                else:
-                    print(f"Failed to create producer after {max_retries} attempts")
-                    raise
+    def __init__(self, stop_event, broker_address):
+        self.producer = KafkaProducer(
+            bootstrap_servers=[broker_address],
+            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+        )
+        self.stop_event = stop_event
 
     def SendMessage(self, request, context):
         data = json.loads(request.data)
