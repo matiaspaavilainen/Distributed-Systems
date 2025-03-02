@@ -102,6 +102,10 @@ spec:
                           port: 50051
                       initialDelaySeconds: 25 # Wait for kafka
                       periodSeconds: 5
+                  lifecycle:
+                      postStart:
+                          exec:
+                              command: ["sleep", "5"]
                   env:
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing/"
