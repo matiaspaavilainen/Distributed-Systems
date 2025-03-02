@@ -35,9 +35,6 @@ metadata:
         # Session handling
         nginx.ingress.kubernetes.io/affinity: "none"
 
-        # SSL/TLS configuration if needed
-        # nginx.ingress.kubernetes.io/ssl-redirect: "true"
-
         # Timeouts
         nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
         nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
