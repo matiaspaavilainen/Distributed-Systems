@@ -156,10 +156,10 @@ stern --version
     kubectl get nodes
 
     # Label worker nodes (replace <worker-X-name> with actual node names)
-
-    kubectl label node <worker1-name> node-role.kubernetes.io/worker=true
-    kubectl label node <worker2-name> node-role.kubernetes.io/worker=true
-    kubectl label node <worker3-name> node-role.kubernetes.io/worker=true
+    # assuming worker ndoes were started with names worker-1, worker-2, worker-3
+    kubectl label node worker-1 node-role.kubernetes.io/worker=true
+    kubectl label node worker-2 node-role.kubernetes.io/worker=true
+    kubectl label node worker-3 node-role.kubernetes.io/worker=true
 
     # Verify labels
 
@@ -171,7 +171,17 @@ stern --version
 1. **Deploy control stack**
 
     ```bash
-    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.0/deploy/static/provider/cloud/deploy.yaml
+    # Apply ingress-nginx controller
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+    
+    # Wait for the ingress controller to be fully ready
+    echo "Waiting for ingress-nginx controller to be ready..."
+    kubectl wait --namespace ingress-nginx \
+      --for=condition=ready pod \
+      --selector=app.kubernetes.io/component=controller \
+      --timeout=180s
+    
+    # Now apply the rest of the components
     kubectl apply -f deployments/mongodb-configmap.yaml
     kubectl apply -f deployments/proxy-node-balancer.yaml
     kubectl apply -f deployments/control-stack.yaml
@@ -229,7 +239,7 @@ stern --version
     # NAT with port forwarding: Use localhost
     curl http://localhost:30404/resource/John%20Williams
 
-### PROMETHEUS
+### PROMETHEUS & MONITORING
 
 1. **Install helm**
 
@@ -241,69 +251,103 @@ stern --version
     sudo apt-get install helm
     ```
 
-2. **Install prometheus**
+2. **Install kube-prometheus-stack** (includes Prometheus Operator with CRDs)
 
     ```bash
+    # Create monitoring namespace
     kubectl create namespace monitoring
+
+    # Add Prometheus repo
     helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
     helm repo update
 
-    # Create directories if not exist
+    # Create local storage for Prometheus
     sudo mkdir -p /mnt/prometheus-server
     sudo chmod 777 /mnt/prometheus-server
 
-    # Get node name
+    # Get node name for storage config
     NODE_NAME=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')
-
-    # Update node name in storage config
     sed -i "s/YOUR_NODE_NAME/$NODE_NAME/g" deployments/prometheus-storage.yaml
-
-    # Apply new storage config
     kubectl apply -f deployments/prometheus-storage.yaml
 
-    # Install Prometheus
-    helm install prometheus prometheus-community/prometheus \
-    --namespace monitoring \
-    --set alertmanager.enabled=false \
-    --set server.persistentVolume.storageClass=local-storage
+    # Deploy kube-prometheus-stack with values and default service monitors
+    helm install prometheus prometheus-community/kube-prometheus-stack \
+      --namespace monitoring \
+      --set prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues=false \
+      --set prometheus.prometheusSpec.servicemonitorSelectorNilUsesHelmValues=false \
+      --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.storageClassName=local-storage \
+      --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.accessModes[0]=ReadWriteOnce \
+      --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=8Gi
 
-    kubectl expose service prometheus-server --namespace monitoring \
-    --type=NodePort --target-port=9090 --name=prometheus-server-ext
+    # Wait for CRDs to become available
+    echo "Waiting for ServiceMonitor CRDs to be ready..."
+    kubectl wait --for condition=established --timeout=60s \
+      crd/servicemonitors.monitoring.coreos.com
 
-    # Find the port of prometheus-server-ext with
-    kubectl get svc prometheus-server-ext -n monitoring -o jsonpath='{.spec.ports[0].nodePort}'
+    # Now create a dedicated NodePort service for external access to Prometheus
+    cat <<EOF | kubectl apply -f -
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: prometheus-server-public
+      namespace: monitoring
+    spec:
+      type: NodePort
+      ports:
+      - port: 9090
+        targetPort: 9090
+        nodePort: 30909
+        name: http
+      selector:
+        app.kubernetes.io/name: prometheus
+        prometheus: prometheus-kube-prometheus-prometheus
+    EOF
 
-    # data source from the ingress gateway
+    # Create ServiceMonitor for ingress and proxy nodes
     kubectl apply -f deployments/prometheus-monitoring.yaml
-    
-    # Prometheus dashboard should now be available at
-    # http://VM_IP:prometheus-server-ext port
     ```
 
-3. **Install grafana**
+3. **Install Grafana**
 
     ```bash
     helm repo add grafana https://grafana.github.io/helm-charts
     helm repo update
-    helm install grafana grafana/grafana --namespace monitoring
-
-    kubectl expose service grafana --namespace monitoring --type=NodePort --target-port=3000 --name=grafana-ext
     
-    # Find the port of grafana with
-    kubectl get svc grafana-ext -n monitoring -o jsonpath='{.spec.ports[0].nodePort}'
-
-    # Grafana should now be available at
-    # http://VM_IP:grafana-ext port
-
-    # get password for user "admin"
+    # Install Grafana with NodePort for easy access
+    helm install grafana grafana/grafana \
+      --namespace monitoring \
+      --set service.type=NodePort \
+      --set service.nodePort=30300
+    
+    # Get admin password
     kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
-
-    # Add the datasource
-    kubectl get svc prometheus-server-ext -n monitoring -o jsonpath='{.spec.ports[0].nodePort}'
-    # http://VM_IP:prometheus-server-ext port
+    
+    # Print access URL
+    NODE_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -n 1)
+    echo "Grafana dashboard available at: http://$NODE_IP:30300"
+    echo "Log in with username: admin and the password displayed above"
+    echo "After login, add Prometheus data source: http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090"
     ```
 
 ## Stopping and Restarting
+
+### Delete everything, but cluster is not destroyed
+
+```bash
+kubectl delete -f deployments/control-stack.yaml
+kubectl delete -f deployments/proxy-node-balancer.yaml
+kubectl delete configmap mongodb-config
+
+# Remove Prometheus and Grafana
+helm uninstall prometheus -n monitoring
+helm uninstall grafana -n monitoring
+kubectl delete namespace monitoring
+kubectl delete -f deployments/prometheus-storage.yaml
+# Delete any leftover resources
+kubectl delete pods,services,deployments,statefulsets,configmaps,ingress --all --all-namespaces
+
+kubectl delete -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+```
 
 ### Shutdown
 
