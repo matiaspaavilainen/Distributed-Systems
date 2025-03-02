@@ -1,4 +1,6 @@
 import os
+import socket
+import sys
 import threading
 import signal
 import time
@@ -10,6 +12,38 @@ from producer import producer_service
 stop_event = threading.Event()
 consumer_thread = None
 producer_thread = None
+
+
+def start_consumer(port, kafka_broker):
+    consumer_service.serve(port, stop_event, kafka_broker)
+
+
+def start_producer(port, kafka_broker):
+    producer_service.serve(port, stop_event, kafka_broker)
+
+
+def wait_for_kafka_broker(broker):
+    port = 9092
+    max_attempts = 10
+    print(f"Waiting for Kafka broker at {broker}:{port}...")
+
+    for attempt in range(max_attempts):
+        try:
+            # Simple socket connection test
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            sock.connect((broker, port))
+            sock.close()
+            print(f"Successfully connected to Kafka broker after {attempt+1} attempts")
+            # Add 5 second buffer for full initialization
+            time.sleep(5)
+            return True
+        except Exception as e:
+            print(f"Attempt {attempt+1}/{max_attempts}: {str(e)}")
+            time.sleep(2)
+
+    print("Failed to connect to Kafka broker after maximum attempts")
+    return False
 
 
 def shutdown_gracefully(*args):
@@ -28,14 +62,6 @@ def shutdown_gracefully(*args):
     os._exit(0)
 
 
-def start_consumer(port, kafka_broker):
-    consumer_service.serve(port, stop_event, kafka_broker)
-
-
-def start_producer(port, kafka_broker):
-    producer_service.serve(port, stop_event, kafka_broker)
-
-
 def main(base_port, broker):
     global consumer_thread, producer_thread
 
@@ -45,6 +71,10 @@ def main(base_port, broker):
 
     consumer_port = base_port + 2
     producer_port = base_port + 3
+
+    if not wait_for_kafka_broker(broker):
+        print("Exiting due to Kafka connectivity failure")
+        sys.exit(1)
 
     print(f"Started consumer on port: {consumer_port}")
     print(f"Started producer on port: {producer_port}")

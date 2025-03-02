@@ -1,4 +1,5 @@
 import os
+import sys
 import threading
 import time
 import signal
@@ -134,6 +135,40 @@ def process_updates():
             time.sleep(1)
 
 
+def wait_for_dependencies():
+    # Wait for MongoDB
+    mongo_ready = False
+    max_attempts = 10
+    for attempt in range(max_attempts):
+        try:
+            client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=1000)
+            client.admin.command("ping")
+            mongo_ready = True
+            print("MongoDB connection successful")
+            break
+        except Exception as e:
+            print(f"Mongo not ready, attempt {attempt+1}/{max_attempts}: {str(e)}")
+            time.sleep(2)
+
+    if not mongo_ready:
+        return False
+
+    # Wait for Kafka consumer service
+    kafka_ready = False
+    for attempt in range(max_attempts):
+        try:
+            with grpc.insecure_channel(f"localhost:{CONSUMER_PORT}") as channel:
+                grpc.channel_ready_future(channel).result(timeout=1)
+                kafka_ready = True
+                print("Kafka services ready")
+                break
+        except Exception as e:
+            print(f"Kafka not ready, attempt {attempt+1}/{max_attempts}: {str(e)}")
+            time.sleep(2)
+
+    return mongo_ready and kafka_ready
+
+
 def shutdown_gracefully(*args):
     global server_thread
     print("Received termination signal, shutting down gracefully...")
@@ -187,6 +222,10 @@ def main():
 
     vector_clock = VectorClock({})
     signal.signal(signal.SIGTERM, shutdown_gracefully)
+
+    if not wait_for_dependencies():
+        print("Critical dependencies not available, exiting")
+        sys.exit(1)
 
     client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
     db = client["LOOKUP"]

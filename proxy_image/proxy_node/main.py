@@ -1,7 +1,9 @@
 import os
+import sys
 import threading
 import time
 import signal
+import grpc
 from pymongo import MongoClient
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
@@ -132,6 +134,40 @@ def start_http_server(port):
     uvicorn.run(app, host="0.0.0.0", port=port)
 
 
+def wait_for_dependencies(kafka_consumer):
+    # Wait for MongoDB
+    mongo_ready = False
+    max_attempts = 10
+    for attempt in range(max_attempts):
+        try:
+            client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=1000)
+            client.admin.command("ping")
+            mongo_ready = True
+            print("MongoDB connection successful")
+            break
+        except Exception as e:
+            print(f"Mongo not ready, attempt {attempt+1}/{max_attempts}: {str(e)}")
+            time.sleep(2)
+
+    if not mongo_ready:
+        return False
+
+    # Wait for Kafka consumer service
+    kafka_ready = False
+    for attempt in range(max_attempts):
+        try:
+            with grpc.insecure_channel(f"localhost:{kafka_consumer}") as channel:
+                grpc.channel_ready_future(channel).result(timeout=1)
+                kafka_ready = True
+                print("Kafka services ready")
+                break
+        except Exception as e:
+            print(f"Kafka not ready, attempt {attempt+1}/{max_attempts}: {str(e)}")
+            time.sleep(2)
+
+    return mongo_ready and kafka_ready
+
+
 def shutdown_gracefully(*args):
     print("Received termination signal, shutting down gracefully...")
     send_message(
@@ -157,6 +193,10 @@ def main(port):
     HTTP_PORT = port + 1
     KAFKA_CON_PORT = port + 2
     KAFKA_PROD_PORT = port + 3
+
+    if not wait_for_dependencies(KAFKA_CON_PORT):
+        print("Critical dependencies not available, exiting")
+        sys.exit(1)
 
     # Register signal handler for Kubernetes pod termination
     signal.signal(signal.SIGTERM, shutdown_gracefully)
