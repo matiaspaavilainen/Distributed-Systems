@@ -23,9 +23,6 @@ kind: Ingress
 metadata:
     name: proxy-node-ingress
     annotations:
-        # Basic configuration
-        kubernetes.io/ingress.class: "nginx"
-
         # Load balancing configuration
         nginx.ingress.kubernetes.io/load-balance: "round_robin"
 
@@ -40,6 +37,7 @@ metadata:
         nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
         nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
 spec:
+    ingressClassName: nginx
     rules:
         - http:
               paths:
