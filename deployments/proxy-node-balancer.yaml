@@ -49,8 +49,6 @@ spec:
                             port:
                                 name: http
 ---
-# 3. Configure NodePort on the Ingress Controller (if needed for specific port)
-# Note: This is typically configured on the ingress controller deployment itself
 apiVersion: v1
 kind: Service
 metadata:
@@ -66,6 +64,9 @@ spec:
           port: 80
           targetPort: 80
           nodePort: 30080
+        - name: metrics
+          port: 10254
+          targetPort: 10254
     selector:
         app.kubernetes.io/name: ingress-nginx
         app.kubernetes.io/instance: ingress-nginx
