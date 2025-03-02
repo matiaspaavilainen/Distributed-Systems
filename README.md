@@ -200,8 +200,8 @@ stern --version
 
     ```bash
     # Check gateway logs with stern
-    stern control -c gateway
-    # When it shows 3 nodes for 3 VMs, its ready to accept requests.
+    stern control -c lookup
+    # When lookuptable has 9 entries its good
     # NOTE: can take up to 2 minutes, just wait
 
     # Get VM's IP
