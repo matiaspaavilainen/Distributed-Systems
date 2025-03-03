@@ -37,11 +37,6 @@ spec:
                   image: mongo:latest
                   ports:
                       - containerPort: 27017
-                  readinessProbe:
-                      tcpSocket:
-                          port: 27017
-                      initialDelaySeconds: 10
-                      periodSeconds: 5
                   env:
                       - name: MONGO_INITDB_ROOT_USERNAME
                         value: "root"
@@ -52,11 +47,6 @@ spec:
                   image: bitnami/zookeeper:latest
                   ports:
                       - containerPort: 2181
-                  readinessProbe:
-                      tcpSocket:
-                          port: 2181
-                      initialDelaySeconds: 10
-                      periodSeconds: 5
                   env:
                       - name: ALLOW_ANONYMOUS_LOGIN
                         value: "yes"
@@ -71,11 +61,6 @@ spec:
                   image: bitnami/kafka:latest
                   ports:
                       - containerPort: 9092
-                  readinessProbe:
-                      tcpSocket:
-                          port: 9092
-                      initialDelaySeconds: 10
-                      periodSeconds: 5
                   env:
                       - name: KAFKA_CFG_ZOOKEEPER_CONNECT
                         value: "localhost:2181" # Zookeeper within the same pod
@@ -97,11 +82,6 @@ spec:
                 - name: lookup
                   image: matiaspaavilainen/distributed-systems:lookup_service
                   imagePullPolicy: Always
-                  readinessProbe:
-                      tcpSocket:
-                          port: 50051
-                      initialDelaySeconds: 10
-                      periodSeconds: 5
                   env:
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing/"

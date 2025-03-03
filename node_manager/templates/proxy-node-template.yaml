@@ -45,11 +45,6 @@ spec:
                         containerPort: "{http_port}"
                       - name: grpc
                         containerPort: "{grpc_port}"
-                  readinessProbe:
-                      tcpSocket:
-                          port: "{grpc_port}"
-                      initialDelaySeconds: 10
-                      periodSeconds: 5
                   env:
                       - name: POD_NAME
                         valueFrom:
