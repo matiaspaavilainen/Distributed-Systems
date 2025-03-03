@@ -12,9 +12,9 @@ data:
             return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
         }
 
-        // Generate 10000 users with realistic data
+        // Generate 20000 users with realistic data
         let users = [];
-        for (let i = 0; i < 10000; i++) {
+        for (let i = 0; i < 20000; i++) {
             const firstName = ['John', 'Jane', 'Mike', 'Sarah', 'David', 'Emma', 'James', 'Emily'][Math.floor(Math.random() * 8)];
             const lastName = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis'][Math.floor(Math.random() * 8)];
 
@@ -26,7 +26,7 @@ data:
                     street: `${Math.floor(Math.random() * 9999) + 1} ${['Main', 'Oak', 'Maple', 'Cedar', 'Pine'][Math.floor(Math.random() * 5)]} St`,
                     city: ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia'][Math.floor(Math.random() * 6)],
                     state: ['NY', 'CA', 'IL', 'TX', 'AZ', 'PA'][Math.floor(Math.random() * 6)],
-                    zipCode: Math.floor(Math.random() * 89999) + 10000
+                    zipCode: Math.floor(Math.random() * 89999) + 20000
                 },
                 created_at: randomDate(new Date(2020, 0, 1), new Date()),
                 orders: Math.floor(Math.random() * 50),
