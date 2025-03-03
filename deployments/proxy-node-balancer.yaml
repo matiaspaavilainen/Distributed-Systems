@@ -48,3 +48,25 @@ spec:
                             name: proxy-node-service
                             port:
                                 name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: ingress-nginx-controller
+    namespace: ingress-nginx
+    annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "10249"
+spec:
+    type: NodePort
+    ports:
+        - name: http
+          port: 80
+          targetPort: 80
+          nodePort: 30080
+        - name: metrics
+          port: 10249
+          targetPort: 10249
+    selector:
+        app.kubernetes.io/name: ingress-nginx
+        app.kubernetes.io/component: controller
