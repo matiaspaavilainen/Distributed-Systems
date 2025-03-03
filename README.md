@@ -152,9 +152,6 @@ stern --version
 7. **Label Worker Nodes**
 
     ```bash
-    # Get node names
-    kubectl get nodes
-
     # Label worker nodes (replace <worker-X-name> with actual node names)
     # assuming worker ndoes were started with names worker-1, worker-2, worker-3
     kubectl label node worker-1 node-role.kubernetes.io/worker=true
@@ -173,6 +170,7 @@ stern --version
     ```bash
     # Apply ingress-nginx controller
     kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+
     
     # Wait for the ingress controller to be fully ready
     echo "Waiting for ingress-nginx controller to be ready..."
@@ -307,37 +305,32 @@ stern --version
     # Get admin password
     kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
     
-    # Print access URL
-    NODE_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -n 1)
-    echo "Grafana dashboard available at: http://$NODE_IP:30300"
-    echo "Log in with username: admin and the password displayed above"
-    echo "After login, add Prometheus data source: http://VM_PUBLIC_IP:30909"
+    # Grafana accesible on VM_IP:30030
     ```
 
 4. **Add basic Grafana dashboard for proxy metrics**
 
    After logging into Grafana, create a new dashboard with these panels:
 
-   1. **Request Rate**: `sum(rate(nginx_ingress_controller_requests[5m]))`
-   2. **Error Rate**: `sum(rate(nginx_ingress_controller_requests{status=~"5.*"}[5m]))`
-   3. **Average Response Time**: `sum(rate(nginx_ingress_controller_request_duration_seconds_sum[5m])) / sum(rate(nginx_ingress_controller_request_duration_seconds_count[5m]))`
-   4. **CPU Usage**: `sum(rate(container_cpu_usage_seconds_total{pod=~"proxy-node.*"}[5m]))`
+   1. **Request Rate**: `sum(rate(nginx_ingress_controller_nginx_process_requests_total[1m]))`
+   2. **CPU Usage**: `sum(rate(container_cpu_usage_seconds_total{pod=~"proxy-node.*"}[1m]))`
 
 ## Stopping and Restarting
 
 ### Delete everything, but cluster is not destroyed
 
 ```bash
+kubectl delete -f deployments/worker-stack.yaml
 kubectl delete -f deployments/control-stack.yaml
 kubectl delete -f deployments/proxy-node-balancer.yaml
-kubectl delete configmap mongodb-config
+
 
 # Remove Prometheus and Grafana
 helm uninstall prometheus -n monitoring
 helm uninstall grafana -n monitoring
 kubectl delete namespace monitoring
 # Delete any leftover resources
-kubectl delete pods,services,deployments,statefulsets,configmaps,ingress --all --all-namespaces
+kubectl delete pods,services,deployments,statefulsets,configmaps,ingress,namespaces --all --all-namespaces
 
 kubectl delete -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
 ```
