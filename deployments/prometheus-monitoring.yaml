@@ -17,3 +17,4 @@ spec:
         - port: metrics
           interval: 15s
           scheme: http
+          path: /metrics
