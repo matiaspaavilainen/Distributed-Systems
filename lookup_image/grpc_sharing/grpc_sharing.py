@@ -45,6 +45,34 @@ class LookupServicer(lookup_sharing_pb2_grpc.LookupSharingServicer):
             context.set_details(str(e))
             return lookup_sharing_pb2.UpdateResponse(success=False)
 
+    def GetLookupTable(self, request, context):
+        try:
+            start_time = time.time()
+            print(f"Received lookup table request from {context.peer()}")
+
+            # Retrieve data from MongoDB
+            table_data = {
+                str(doc["address"]): doc["values"] for doc in self.collection.find()
+            }
+
+            # Convert to JSON string
+            serialized_data = json.dumps(table_data)
+
+            elapsed = time.time() - start_time
+            print(f"Processed lookup table request in {elapsed:.4f} seconds")
+            print(f"Returning lookup table with {len(table_data)} entries")
+
+            return lookup_sharing_pb2.LookupTableResponse(
+                table_data=serialized_data, success=True
+            )
+        except Exception as e:
+            print(f"Error in GetLookupTable: {e}")
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(str(e))
+            return lookup_sharing_pb2.LookupTableResponse(
+                success=False, error_message=str(e)
+            )
+
 
 # Create a global connection pool
 connection_pool = {}

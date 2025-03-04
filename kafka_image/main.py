@@ -24,7 +24,7 @@ def start_producer(port, kafka_broker):
 
 def wait_for_kafka_broker(broker):
     port = 9092
-    max_attempts = 10
+    max_attempts = 20
     print(f"Waiting for Kafka broker at {broker}:{port}...")
 
     for attempt in range(max_attempts):

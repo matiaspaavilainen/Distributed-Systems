@@ -152,7 +152,7 @@ def main():
 
     stop_event = threading.Event()
     k8s_apps, k8s_core, k8s_networking = initialize_k8s()
-    NUM_NODES = 3
+    DEFAULT_NODE_QUANTITY = 3
     worker_num = int(WORKER_NAME.split("-")[1])
 
     # Load base template once
@@ -162,19 +162,18 @@ def main():
     def shutdown_gracefully(*args):
         print("Received termination signal, shutting down node manager...")
         stop_event.set()
-        # Clean up nodes
-        for i in range(NUM_NODES):
+        # Clean up nodes - make sure to clean up all nodes including delayed one
+        for i in range(DEFAULT_NODE_QUANTITY):
             delete_node(k8s_apps, k8s_core, node_id=i, worker_num=worker_num)
         print("All nodes deleted")
 
     signal.signal(signal.SIGTERM, shutdown_gracefully)
     time.sleep(2)
 
-    print(f"Starting node manager, creating {NUM_NODES} nodes...")
+    print(f"Starting node manager, creating initial {DEFAULT_NODE_QUANTITY} nodes...")
 
-    # Create nodes one at a time, using and discarding templates as we go
-    for i in range(NUM_NODES):
-        # Create worker-specific template for this node
+    # Create initial nodes
+    for i in range(DEFAULT_NODE_QUANTITY):
         current_template = create_node_template(base_template, worker_num)
         create_node(
             k8s_apps,
@@ -185,11 +184,10 @@ def main():
             pod_ip=POD_IP,
         )
         print(f"Created node {i} on {WORKER_NAME}")
-        # Let the template be garbage collected
         current_template = None
 
-    print("All nodes created. Node ports:")
-    for i in range(NUM_NODES):
+    print("Initial nodes created. Node ports:")
+    for i in range(DEFAULT_NODE_QUANTITY):
         print(f"Node {i}:")
         print(f"  HTTP: {50060 + i * 10 + 1}")
         print(f"  gRPC: {50060 + i * 10}")

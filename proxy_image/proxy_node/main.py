@@ -25,13 +25,14 @@ SERVICE_NAME = os.getenv("SERVICE_NAME")
 POD_NAME = os.getenv("POD_NAME")
 MAIN_SERVER_ADDRESS = "server-service.default.svc.cluster.local:40002"
 
-# Use local MongoDB on worker node
-mongo_service = f"worker-{POD_NAME.split("-")[2]}"
-MONGO_URL = f"mongodb://root:example@{mongo_service}:27017"
+LOOKUP_SERVICE = f"worker-{POD_NAME.split("-")[2]}:50051"
+MONGO_URL = "mongodb://root:example@localhost:27017"
+
+# max number of users in a node's db
+MAX_DB_DOCUMENTS = 1000
 
 # Topics
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
-LOOKUP_TABLE_TOPIC = "lookup-table"
 NODE_UPDATES = "node-updates"
 
 app = FastAPI()
@@ -85,6 +86,20 @@ def process_item_response(item, query):
             "status": item.status,
             "premium": item.premium,
         }
+        # Check if we need to enforce collection size limit
+    collection_size = collection.count_documents({})
+
+    if collection_size >= MAX_DB_DOCUMENTS:
+        # Remove oldest documents (based on created_at or _id)
+        oldest = list(
+            collection.find()
+            .sort("_id", 1)
+            .limit(collection_size - MAX_DB_DOCUMENTS + 1)
+        )
+        if oldest:
+            oldest_ids = [doc["_id"] for doc in oldest]
+            collection.delete_many({"_id": {"$in": oldest_ids}})
+            print(f"Removed {len(oldest_ids)} oldest documents to maintain size limit")
 
     # Insert into MongoDB (will create its own _id)
     collection.insert_one(user_data.copy())
@@ -137,7 +152,7 @@ def start_http_server(port):
 def wait_for_dependencies(kafka_consumer):
     # Wait for MongoDB
     mongo_ready = False
-    max_attempts = 10
+    max_attempts = 20
     for attempt in range(max_attempts):
         try:
             client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=1000)
@@ -211,7 +226,7 @@ def main(port):
     time.sleep(5)
 
     print("Initializing lookup table")
-    init_lookup_table(KAFKA_CON_PORT, LOOKUP_TABLE_TOPIC)
+    init_lookup_table(LOOKUP_SERVICE)
 
     kafka_thread = threading.Thread(
         target=listen_for_new_messages, args=(KAFKA_CON_PORT, LOOKUP_UPDATES_TOPIC)

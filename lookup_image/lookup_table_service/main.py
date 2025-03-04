@@ -25,8 +25,10 @@ PRODUCER_PORT = kafka_port + 3
 
 NODE_UPDATES_TOPIC = "node-updates"
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
-LOOKUP_TABLE_TOPIC = "lookup-table"
 
+# how many values each entry in the table holds
+# CHANGE in proxy-node/messaging as well
+MAX_VALUES_PER_ADDRESS = 64
 MONGO_URL = "mongodb://root:example@localhost:27017"
 PEER_LOOKUPS = [
     "lookup-service-control:50051",
@@ -34,6 +36,7 @@ PEER_LOOKUPS = [
     "worker-1:50051",
     "worker-2:50051",
 ]
+
 GRPC_SERVER_PORT = 50051
 
 # Global variables
@@ -45,22 +48,6 @@ process_thread = None
 @dataclass
 class VectorClock:
     clocks: Dict[str, int]
-
-
-def broadcast_table():
-    try:
-        with grpc.insecure_channel(f"localhost:{PRODUCER_PORT}") as channel:
-            stub = producer_pb2_grpc.ProducerStub(channel)
-            table_data = {
-                str(doc["address"]): doc["values"] for doc in collection.find()
-            }
-            request = producer_pb2.SendMessageRequest(
-                topic=LOOKUP_TABLE_TOPIC, data=json.dumps(table_data)
-            )
-            stub.SendMessage(request)
-            print("Lookuptable:", table_data)
-    except Exception as e:
-        print(f"Error broadcasting table: {e}")
 
 
 def send_update(data, update_type):
@@ -91,6 +78,15 @@ def update_table(data, update_type, from_peer=False):
                     {"$addToSet": {"values": {"$each": values}}},
                     upsert=True,
                 )
+                # Then, trim the array to keep only the most recent MAX_VALUES_PER_ADDRESS items
+                collection.update_one(
+                    {"address": str(address)},
+                    {
+                        "$push": {
+                            "values": {"$each": [], "$slice": -MAX_VALUES_PER_ADDRESS}
+                        }
+                    },
+                )
         elif update_type == "I":
             for address in data:
                 print(f"Initializing address: {address}")
@@ -104,9 +100,7 @@ def update_table(data, update_type, from_peer=False):
                 print(f"Deleting address: {address}")
                 collection.delete_one({"address": str(address)})
 
-        # Broadcast to Kafka always
         send_update(data, update_type)
-        broadcast_table()
 
         # Only propagate to peers if update is local
         if not from_peer:
