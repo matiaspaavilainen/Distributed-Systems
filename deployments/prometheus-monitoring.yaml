@@ -24,7 +24,7 @@ kind: ServiceMonitor
 metadata:
     name: server-metrics
     namespace: monitoring
-    lables:
+    labels:
         release: prometheus
 spec:
     namespaceSelector:
