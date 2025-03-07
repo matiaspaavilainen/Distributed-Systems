@@ -102,6 +102,8 @@ spec:
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.name
+                      - name: MONGO_URL
+                        value: "mongodb://root:example@localhost:27017"
 
                 - name: kafka-service-lookup
                   image: matiaspaavilainen/distributed-systems:kafka_services
