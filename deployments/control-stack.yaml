@@ -135,6 +135,7 @@ spec:
         app: control
     ports:
         - protocol: TCP
+          name: metrics
           port: 40003
           targetPort: 40003
     type: ClusterIP

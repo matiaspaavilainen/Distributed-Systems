@@ -32,7 +32,7 @@ spec:
             - default
     selector:
         matchLabels:
-            app: control
+            app: server-metrics-service
     endpoints:
         - targetPort: 40003
           interval: 15s
