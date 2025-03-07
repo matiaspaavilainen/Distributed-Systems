@@ -46,13 +46,13 @@ spec:
                           # Create data directory if it doesn't exist
                           mkdir -p /data/db
 
-                          # Start MongoDB with replication enabled
+                          # Start MongoDB with replication enabled and auth
                           mongod --replSet rs-$(hostname) --bind_ip_all &
 
                           # Wait for MongoDB to start
                           sleep 5
 
-                          # Initialize as a single-node replica set
+                          # Initialize as a single-node replica set with proper hostname
                           mongo --eval 'rs.initiate({
                             _id: "rs-" + hostname,
                             members: [
@@ -60,7 +60,16 @@ spec:
                             ]
                           })'
 
-                          echo "MongoDB initialized as single-node replica set rs-$(hostname)"
+                          # Create the admin user after replica set is initialized
+                          mongo --eval 'use admin; db.createUser({user: "root", pwd: "example", roles: [{role: "root", db: "admin"}]})'
+
+                          # Force MongoDB to recognize the auth has been set up
+                          mongod --shutdown
+
+                          # Restart with auth enabled
+                          mongod --replSet rs-$(hostname) --bind_ip_all --auth &
+
+                          echo "MongoDB initialized as single-node replica set rs-$(hostname) with authentication"
 
                           # Keep container running
                           wait
