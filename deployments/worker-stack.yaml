@@ -37,32 +37,29 @@ spec:
                   image: mongodb/mongodb-community-server:latest
                   ports:
                       - containerPort: 27017
+
                   command: ["/bin/bash", "-c"]
                   args:
                       - |
-                          echo "Starting MongoDB as single-node replica set..."
+                          echo "Starting MongoDB setup process..."
                           mkdir -p /data/db
 
-                          # Start MongoDB without auth first
-                          mongod --replSet rs-$(hostname) --bind_ip_all --logpath /tmp/mongo.log --logappend &
+                          # Step 1: Start MongoDB WITHOUT auth
+                          echo "Step 1: Starting MongoDB without auth"
+                          mongod --replSet rs-$(hostname) --bind_ip_all &
                           MONGO_PID=$!
 
+                          # Wait for MongoDB to be ready
                           sleep 10
 
-                          # Initialize replica set
-                          echo "Initializing replica set..."
-                          mongosh --eval "const hostName = '$(hostname)'; rs.initiate({
-                            _id: 'rs-' + hostName,
-                            members: [
-                              {_id: 0, host: 'localhost:27017'}
-                            ]
-                          })"
+                          # Step 2: Initialize replica set
+                          echo "Step 2: Initializing replica set"
+                          mongosh --eval 'rs.initiate({_id: "rs-" + hostname, members: [{_id: 0, host: "localhost:27017"}]})'
 
-                          # Wait for primary to be elected
-                          echo "Waiting for primary to be elected..."
+                          # Step 3: Wait for primary
+                          echo "Step 3: Waiting for primary election"
                           for i in {1..30}; do
-                            IS_PRIMARY=$(mongosh --quiet --eval "db.isMaster().ismaster")
-                            if [ "$IS_PRIMARY" = "true" ]; then
+                            if mongosh --quiet --eval "db.isMaster().ismaster" | grep -q "true"; then
                               echo "Primary elected!"
                               break
                             fi
@@ -70,36 +67,31 @@ spec:
                             sleep 2
                           done
 
-                          # Create the admin user
-                          echo "Creating admin user..."
+                          # Step 4: Create admin user
+                          echo "Step 4: Creating admin user"
                           mongosh --eval 'use admin; db.createUser({user: "root", pwd: "example", roles: [{role: "root", db: "admin"}]})'
-                          echo "Admin user created successfully"
-                          # Check if primary - wait until status is available
-                          echo "Checking replica set status..."
-                          MAX_ATTEMPTS=10
-                          ATTEMPT=0
-                          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-                            OUTPUT=$(mongosh --eval 'rs.status().ok' --quiet)
-                            if [ "$OUTPUT" == "1" ]; then
-                              echo "Replica set is initialized successfully"
-                              mongosh --eval 'rs.status()'
-                              break
-                            fi
-                            ATTEMPT=$((ATTEMPT+1))
-                            echo "Waiting for replica set to initialize (attempt $ATTEMPT/$MAX_ATTEMPTS)..."
-                            sleep 2
-                          done
 
-                          echo "MongoDB initialized as single-node replica set rs-$HOST_NAME with authentication"
+                          # Step 5: Verify user creation
+                          echo "Step 5: Verifying user creation"
+                          if mongosh --quiet --eval 'db.auth("root", "example")' admin | grep -q "1"; then
+                            echo "User verified successfully"
+                          else
+                            echo "WARNING: User verification failed"
+                          fi
 
-                          # Keep container running and forward logs
-                          tail -f /tmp/mongo.log &
+                          # Step 6: Create a test database and collection
+                          echo "Step 6: Creating test database and collection"
+                          mongosh --eval 'use lookupdb; db.test.insertOne({test: true})'
+
+                          # Wait a moment
+                          sleep 5
+
+                          echo "MongoDB initialized successfully with auth user"
+                          echo "To test: mongosh -u root -p example --authenticationDatabase admin"
+
+                          # Keep container running
                           wait $MONGO_PID
-                  env:
-                      - name: MONGO_INITDB_ROOT_USERNAME
-                        value: "root"
-                      - name: MONGO_INITDB_ROOT_PASSWORD
-                        value: "example"
+
                 # ZOOKEEPER
                 - name: zookeeper
                   image: bitnami/zookeeper:latest
@@ -146,6 +138,23 @@ spec:
                 - name: lookup
                   image: matiaspaavilainen/distributed-systems:lookup_service
                   imagePullPolicy: Always
+                  initContainers:
+                      - name: wait-for-mongodb
+                        image: mongo:latest
+                        command: ["/bin/bash", "-c"]
+                        args:
+                            - |
+                                echo "Waiting for MongoDB to be ready and authenticated..."
+                                for i in {1..40}; do
+                                  if mongo --quiet -u root -p example --authenticationDatabase admin --eval 'db.serverStatus()' | grep -q "ok"; then
+                                    echo "MongoDB is ready and authentication works!"
+                                    exit 0
+                                  fi
+                                  echo "MongoDB not ready yet (attempt $i/40)..."
+                                  sleep 3
+                                done
+                                echo "Failed after 40 attempts"
+                                exit 1
                   env:
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing/"
