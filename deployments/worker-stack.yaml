@@ -43,34 +43,50 @@ spec:
                           echo "Starting MongoDB as single-node replica set..."
                           mkdir -p /data/db
 
+                          # Capture hostname in a bash variable
+                          HOST_NAME=$(hostname)
+                          echo "Current hostname: $HOST_NAME"
+
                           # Start MongoDB
-                          mongod --replSet rs-$(hostname) --bind_ip_all --logpath /tmp/mongo.log --logappend &
+                          mongod --replSet rs-$HOST_NAME --bind_ip_all --logpath /tmp/mongo.log --logappend &
                           MONGO_PID=$!
 
                           sleep 10
 
-                          # Initialize replica set (mongosh is already included)
+                          # Initialize replica set - properly passing hostname to mongosh
                           echo "Initializing replica set..."
-                          mongosh --eval 'rs.initiate({
-                            _id: "rs-" + hostname,
+                          mongosh --eval "const hostName = '$HOST_NAME'; rs.initiate({
+                            _id: 'rs-' + hostName,
                             members: [
-                              {_id: 0, host: "localhost:27017"}
+                              {_id: 0, host: 'localhost:27017'}
                             ]
-                          })'
-                            
-                            # Create the admin user
-                            echo "Creating admin user..."
-                            mongosh --eval 'use admin; db.createUser({user: "root", pwd: "example", roles: [{role: "root", db: "admin"}]})'
-                            
-                            # Check if primary
-                            echo "Checking replica set status..."
-                            mongosh --eval 'rs.status()'
-                            
-                            echo "MongoDB initialized as single-node replica set rs-$(hostname) with authentication"
-                            
-                            # Keep container running and forward logs
-                            tail -f /tmp/mongo.log &
-                            wait $MONGO_PID
+                          })"
+
+                          # Create the admin user
+                          echo "Creating admin user..."
+                          mongosh --eval 'use admin; db.createUser({user: "root", pwd: "example", roles: [{role: "root", db: "admin"}]})'
+
+                          # Check if primary - wait until status is available
+                          echo "Checking replica set status..."
+                          MAX_ATTEMPTS=10
+                          ATTEMPT=0
+                          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+                            OUTPUT=$(mongosh --eval 'rs.status().ok' --quiet)
+                            if [ "$OUTPUT" == "1" ]; then
+                              echo "Replica set is initialized successfully"
+                              mongosh --eval 'rs.status()'
+                              break
+                            fi
+                            ATTEMPT=$((ATTEMPT+1))
+                            echo "Waiting for replica set to initialize (attempt $ATTEMPT/$MAX_ATTEMPTS)..."
+                            sleep 2
+                          done
+
+                          echo "MongoDB initialized as single-node replica set rs-$HOST_NAME with authentication"
+
+                          # Keep container running and forward logs
+                          tail -f /tmp/mongo.log &
+                          wait $MONGO_PID
                   env:
                       - name: MONGO_INITDB_ROOT_USERNAME
                         value: "root"
