@@ -40,11 +40,31 @@ spec:
                   command: ["/bin/bash", "-c"]
                   args:
                       - |
+                          # Start MongoDB without auth first
                           mongod --bind_ip_all --replSet rs0 --noauth &
-                          sleep 10
-                          mongosh --eval "rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'localhost:27017'}]})"
-                          wait
 
+                          # Wait for MongoDB to start
+                          sleep 10
+
+                          # Initialize replica set
+                          mongosh --eval "rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'localhost:27017'}]})"
+
+                          # Wait for replica set to initialize
+                          sleep 5
+
+                          # Create admin user
+                          mongosh --eval 'admin = db.getSiblingDB("admin"); admin.createUser({user:"root",pwd:"example",roles:[{role:"root",db:"admin"}]});'
+
+                          # Shutdown MongoDB
+                          mongosh --eval "db.adminCommand({shutdown: 1})"
+
+                          # Restart with auth
+                          exec mongod --bind_ip_all --replSet rs0 --auth
+                  env:
+                      - name: MONGO_INITDB_ROOT_USERNAME
+                        value: "root"
+                      - name: MONGO_INITDB_ROOT_PASSWORD
+                        value: "example"
                 # ZOOKEEPER
                 - name: zookeeper
                   image: bitnami/zookeeper:latest
@@ -101,7 +121,7 @@ spec:
                             fieldRef:
                                 fieldPath: metadata.name
                       - name: MONGO_URL
-                        value: "mongodb://localhost:27017"
+                        value: "mongodb://root:example@localhost:27017"
 
                 - name: kafka-service-lookup
                   image: matiaspaavilainen/distributed-systems:kafka_services
