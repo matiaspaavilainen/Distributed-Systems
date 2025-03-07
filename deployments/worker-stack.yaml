@@ -40,19 +40,19 @@ spec:
                   command: ["/bin/bash", "-c"]
                   args:
                       - |
-                          # Start MongoDB with replica set configuration (single node)
                           echo "Starting MongoDB as single-node replica set..."
-
-                          # Create data directory if it doesn't exist
                           mkdir -p /data/db
 
-                          # Start MongoDB with replication enabled and auth
-                          mongod --replSet rs-$(hostname) --bind_ip_all &
+                          # Start MongoDB with more logging
+                          mongod --replSet rs-$(hostname) --bind_ip_all --logpath /tmp/mongo.log --logappend &
+                          MONGO_PID=$!
 
-                          # Wait for MongoDB to start
-                          sleep 5
+                          # Wait longer for MongoDB to start
+                          echo "Waiting for MongoDB to start..."
+                          sleep 10
 
-                          # Initialize as a single-node replica set with proper hostname
+                          # Initialize replica set
+                          echo "Initializing replica set..."
                           mongo --eval 'rs.initiate({
                             _id: "rs-" + hostname,
                             members: [
@@ -60,19 +60,20 @@ spec:
                             ]
                           })'
 
-                          # Create the admin user after replica set is initialized
+                          # Create the admin user
+                          echo "Creating admin user..."
                           mongo --eval 'use admin; db.createUser({user: "root", pwd: "example", roles: [{role: "root", db: "admin"}]})'
 
-                          # Force MongoDB to recognize the auth has been set up
-                          mongod --shutdown
+                          # Check if primary
+                          echo "Checking replica set status..."
+                          mongo --eval 'rs.status()'
 
-                          # Restart with auth enabled
-                          mongod --replSet rs-$(hostname) --bind_ip_all --auth &
-
+                          # No need to restart MongoDB - just keep the current instance running
                           echo "MongoDB initialized as single-node replica set rs-$(hostname) with authentication"
 
-                          # Keep container running
-                          wait
+                          # Keep container running and forward logs
+                          tail -f /tmp/mongo.log &
+                          wait $MONGO_PID
                   env:
                       - name: MONGO_INITDB_ROOT_USERNAME
                         value: "root"
