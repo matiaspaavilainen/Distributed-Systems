@@ -37,16 +37,14 @@ spec:
                   image: mongo:latest
                   ports:
                       - containerPort: 27017
-                  command:
-                      - mongod
-                      - "--bind_ip_all"
-                      - "--replSet"
-                      - rs0
-                  env:
-                      - name: MONGO_INITDB_ROOT_USERNAME
-                        value: "root"
-                      - name: MONGO_INITDB_ROOT_PASSWORD
-                        value: "example"
+                  command: ["/bin/bash", "-c"]
+                  args:
+                      - |
+                          mongod --bind_ip_all --replSet rs0 &
+                          sleep 10
+                          mongosh --eval "rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'localhost:27017'}]})" 
+                          wait
+
                 # ZOOKEEPER
                 - name: zookeeper
                   image: bitnami/zookeeper:latest
@@ -103,7 +101,7 @@ spec:
                             fieldRef:
                                 fieldPath: metadata.name
                       - name: MONGO_URL
-                        value: "mongodb://root:example@localhost:27017"
+                        value: "mongodb://localhost:27017"
 
                 - name: kafka-service-lookup
                   image: matiaspaavilainen/distributed-systems:kafka_services
