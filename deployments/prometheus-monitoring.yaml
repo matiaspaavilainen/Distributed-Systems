@@ -25,6 +25,9 @@ metadata:
     name: server-metrics
     namespace: monitoring
 spec:
+    namespaceSelector:
+        matchNames:
+            - default
     selector:
         matchLabels:
             app: control
@@ -32,6 +35,3 @@ spec:
         - port: metrics
           interval: 15s
           path: /metrics
-    namespaceSelector:
-        matchNames:
-            - default
