@@ -61,11 +61,17 @@ spec:
                   image: bitnami/kafka:latest
                   ports:
                       - containerPort: 9092
+                  command: ["/bin/bash", "-c"]
+                  args:
+                      - |
+                          # Extract the pod index from hostname and use it as broker ID
+                          BROKER_ID=$(hostname | awk -F'-' '{print $2+1}')
+                          echo "Starting Kafka with broker ID: $BROKER_ID"
+                          export KAFKA_CFG_BROKER_ID=$BROKER_ID
+                          exec /opt/bitnami/scripts/kafka/entrypoint.sh /opt/bitnami/scripts/kafka/run.sh
                   env:
                       - name: KAFKA_CFG_ZOOKEEPER_CONNECT
-                        value: "localhost:2181" # Zookeeper within the same pod
-                      - name: KAFKA_CFG_BROKER_ID
-                        value: "1" # Static for simplicity
+                        value: "localhost:2181"
                       - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
                         value: "PLAINTEXT:PLAINTEXT"
                       - name: ALLOW_PLAINTEXT_LISTENER
