@@ -170,6 +170,29 @@ def main():
     signal.signal(signal.SIGTERM, shutdown_gracefully)
     time.sleep(2)
 
+    # Add this cleanup section before creating new nodes
+    print("Cleaning up any existing nodes before starting...")
+    for i in range(DEFAULT_NODE_QUANTITY):
+        try:
+            # Check if deployment exists first
+            try:
+                k8s_apps.read_namespaced_deployment(
+                    name=f"proxy-node-{worker_num}-{i}", namespace="default"
+                )
+                # If we get here, deployment exists - delete it
+                delete_node(k8s_apps, k8s_core, node_id=i, worker_num=worker_num)
+                print(f"Cleaned up existing node {i} on worker {worker_num}")
+            except client.exceptions.ApiException as e:
+                if e.status == 404:
+                    # Node doesn't exist, nothing to clean up
+                    pass
+                else:
+                    raise
+        except Exception as e:
+            print(f"Error during cleanup of node {i}: {e}")
+
+    time.sleep(5)  # Wait for deletions to complete
+
     print(f"Starting node manager, creating initial {DEFAULT_NODE_QUANTITY} nodes...")
 
     # Create initial nodes

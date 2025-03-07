@@ -1,12 +1,44 @@
 from concurrent import futures
 import logging
 import socket
+import time
 import grpc
 import data_pb2
 import data_pb2_grpc
 import grpc_main_server_db
+from metrics import start_metrics_server, track_request
 
 DEBUG = False
+
+
+class RequestServicer(data_pb2_grpc.RequestServiceServicer):
+    def __init__(self):
+        if DEBUG:
+            print("Initializing RequestServicer")
+        self.db = grpc_main_server_db.mongo_read_database()
+        if DEBUG:
+            print(f"Loaded database: {self.db}")
+
+    @track_request("RequestData")
+    def RequestData(self, request, context):
+        if DEBUG:
+            print(f"Received request for: {request.name}")
+        feature = get_data(self.db, request)
+        if feature is None:
+            if DEBUG:
+                print("No data found, returning empty reply")
+            # Return an empty but valid RequestReply object with default values
+            return data_pb2.RequestReply(
+                name="",
+                email="",
+                age=0,
+                address=data_pb2.Address(street="", city="", state="", zipCode=0),
+                created_at="",
+                orders=0,
+                status="",
+                premium=False,
+            )
+        return feature
 
 
 def get_data(db, name):
@@ -36,37 +68,14 @@ def get_data(db, name):
     return None
 
 
-class RequestServicer(data_pb2_grpc.RequestServiceServicer):
-    def __init__(self):
-        if DEBUG:
-            print("Initializing RequestServicer")
-        self.db = grpc_main_server_db.mongo_read_database()
-        if DEBUG:
-            print(f"Loaded database: {self.db}")
-
-    def RequestData(self, request, context):
-        if DEBUG:
-            print(f"Received request for: {request.name}")
-        feature = get_data(self.db, request)
-        if feature is None:
-            if DEBUG:
-                print("No data found, returning empty reply")
-            # Return an empty but valid RequestReply object with default values
-            return data_pb2.RequestReply(
-                name="",
-                email="",
-                age=0,
-                address=data_pb2.Address(street="", city="", state="", zipCode=0),
-                created_at="",
-                orders=0,
-                status="",
-                premium=False,
-            )
-        return feature
-
-
 def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    # Start metrics server
+    start_metrics_server(40003)
+
+    # Create a server without complex interceptors
+    server = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=50),
+    )
     data_pb2_grpc.add_RequestServiceServicer_to_server(RequestServicer(), server)
     server.add_insecure_port("[::]:40002")
     server.start()

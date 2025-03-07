@@ -310,10 +310,13 @@ stern --version
 
 4. **Add basic Grafana dashboard for proxy metrics**
 
-   After logging into Grafana, create a new dashboard with these panels:
+    Import Grafana dash from: [grafana](grafana.json) JSON file.
 
-   1. **Request Rate**: `sum(rate(nginx_ingress_controller_nginx_process_requests_total[1m]))`
-   2. **CPU Usage**: `sum(rate(container_cpu_usage_seconds_total{pod=~"proxy-node.*"}[1m]))`
+    1. **Request Rate**: `sum(rate(nginx_ingress_controller_nginx_process_requests_total[1m]))`
+    2. **CPU Usage**: `sum(rate(container_cpu_usage_seconds_total{pod=~"proxy-node.*"}[1m]))`
+    3. **Main Server**:
+    - `rate(grpc_server_requests_total{status="received"}[1m])`
+    - `rate(grpc_server_request_duration_seconds_sum[1m]) / rate(grpc_server_request_duration_seconds_count[1m])`
 
 ## Stopping and Restarting
 

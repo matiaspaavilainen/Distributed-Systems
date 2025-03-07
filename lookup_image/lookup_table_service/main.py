@@ -29,7 +29,7 @@ LOOKUP_UPDATES_TOPIC = "lookup-updates"
 # how many values each entry in the table holds
 # CHANGE in proxy-node/messaging as well
 MAX_VALUES_PER_ADDRESS = 64
-MONGO_URL = "mongodb://root:example@localhost:27017"
+MONGO_URL = os.getenv("MONGO_URL")
 PEER_LOOKUPS = [
     "lookup-service-control:50051",
     "worker-0:50051",
@@ -132,7 +132,7 @@ def process_updates():
 def wait_for_dependencies():
     # Wait for MongoDB
     mongo_ready = False
-    max_attempts = 10
+    max_attempts = 30
     for attempt in range(max_attempts):
         try:
             client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=1000)
