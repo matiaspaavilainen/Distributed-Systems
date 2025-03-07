@@ -138,23 +138,6 @@ spec:
                 - name: lookup
                   image: matiaspaavilainen/distributed-systems:lookup_service
                   imagePullPolicy: Always
-                  initContainers:
-                      - name: wait-for-mongodb
-                        image: mongo:latest
-                        command: ["/bin/bash", "-c"]
-                        args:
-                            - |
-                                echo "Waiting for MongoDB to be ready and authenticated..."
-                                for i in {1..40}; do
-                                  if mongo --quiet -u root -p example --authenticationDatabase admin --eval 'db.serverStatus()' | grep -q "ok"; then
-                                    echo "MongoDB is ready and authentication works!"
-                                    exit 0
-                                  fi
-                                  echo "MongoDB not ready yet (attempt $i/40)..."
-                                  sleep 3
-                                done
-                                echo "Failed after 40 attempts"
-                                exit 1
                   env:
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_sharing/"
