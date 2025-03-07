@@ -37,6 +37,33 @@ spec:
                   image: mongo:latest
                   ports:
                       - containerPort: 27017
+                  command: ["/bin/bash", "-c"]
+                  args:
+                      - |
+                          # Start MongoDB with replica set configuration (single node)
+                          echo "Starting MongoDB as single-node replica set..."
+
+                          # Create data directory if it doesn't exist
+                          mkdir -p /data/db
+
+                          # Start MongoDB with replication enabled
+                          mongod --replSet rs-$(hostname) --bind_ip_all &
+
+                          # Wait for MongoDB to start
+                          sleep 5
+
+                          # Initialize as a single-node replica set
+                          mongo --eval 'rs.initiate({
+                            _id: "rs-" + hostname,
+                            members: [
+                              {_id: 0, host: "localhost:27017"}
+                            ]
+                          })'
+
+                          echo "MongoDB initialized as single-node replica set rs-$(hostname)"
+
+                          # Keep container running
+                          wait
                   env:
                       - name: MONGO_INITDB_ROOT_USERNAME
                         value: "root"

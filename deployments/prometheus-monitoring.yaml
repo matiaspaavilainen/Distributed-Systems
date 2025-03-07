@@ -18,3 +18,20 @@ spec:
           interval: 15s
           scheme: http
           path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+    name: server-metrics
+    namespace: monitoring
+spec:
+    selector:
+        matchLabels:
+            app: control
+    endpoints:
+        - port: metrics
+          interval: 15s
+          path: /metrics
+    namespaceSelector:
+        matchNames:
+            - default

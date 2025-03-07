@@ -83,6 +83,7 @@ spec:
                   imagePullPolicy: Always
                   ports:
                       - containerPort: 40002
+                      - containerPort: 40003
 
                 # LOOKUP
                 - name: lookup
@@ -103,42 +104,28 @@ spec:
                       - name: PYTHONPATH
                         value: "/app/consumer:/app/producer"
 
-                # GATEWAY
-                # - name: gateway
-                #   image: matiaspaavilainen/distributed-systems:gateway
-                #   imagePullPolicy: Always
-                #   env:
-                #       - name: PYTHONPATH
-                #         value: "/app:/app/kafka_messaging/consumer"
-                #         # NEEDS TO MATCH THE KAFKA SERVICE PORT BELOW
-                #       - name: KAFKA_SERVICE_PORT
-                #         value: "2000"
-
-                # - name: kafka-service-gateway
-                #   image: matiaspaavilainen/distributed-systems:kafka_services
-                #   imagePullPolicy: Always
-                #   env:
-                #       - name: PYTHONPATH
-                #         value: "/app/consumer:/app/producer"
-                #       - name: PORT_BASE
-                #         value: "2000"
-
             volumes:
                 - name: mongo-init
                   configMap:
                       name: mongo-init-script
 ---
+
+---
 apiVersion: v1
 kind: Service
 metadata:
-    name: server-service
+    name: server-metrics-service
+    annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "40003"
+        prometheus.io/path: "/metrics"
 spec:
     selector:
         app: control
     ports:
         - protocol: TCP
-          port: 40002
-          targetPort: 40002
+          port: 40003
+          targetPort: 40003
     type: ClusterIP
 ---
 apiVersion: v1
@@ -153,18 +140,3 @@ spec:
           port: 50051
           targetPort: 50051
     type: ClusterIP
-# ---
-# apiVersion: v1
-# kind: Service
-# metadata:
-#     name: gateway
-#     namespace: default
-# spec:
-#     selector:
-#         app: control
-#     ports:
-#         - protocol: TCP
-#           port: 40404
-#           targetPort: 40404
-#           nodePort: 30404
-#     type: NodePort
