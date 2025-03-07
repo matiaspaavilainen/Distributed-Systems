@@ -34,64 +34,19 @@ spec:
             containers:
                 # MONGODB
                 - name: mongodb
-                  image: mongodb/mongodb-community-server:latest
+                  image: mongo:latest
                   ports:
                       - containerPort: 27017
-
-                  command: ["/bin/bash", "-c"]
-                  args:
-                      - |
-                          echo "Starting MongoDB setup process..."
-                          mkdir -p /data/db
-
-                          # Step 1: Start MongoDB WITHOUT auth
-                          echo "Step 1: Starting MongoDB without auth"
-                          mongod --replSet rs-$(hostname) --bind_ip_all &
-                          MONGO_PID=$!
-
-                          # Wait for MongoDB to be ready
-                          sleep 10
-
-                          # Step 2: Initialize replica set
-                          echo "Step 2: Initializing replica set"
-                          mongosh --eval 'rs.initiate({_id: "rs-" + hostname, members: [{_id: 0, host: "localhost:27017"}]})'
-
-                          # Step 3: Wait for primary
-                          echo "Step 3: Waiting for primary election"
-                          for i in {1..30}; do
-                            if mongosh --quiet --eval "db.isMaster().ismaster" | grep -q "true"; then
-                              echo "Primary elected!"
-                              break
-                            fi
-                            echo "Waiting for primary election (attempt $i/30)..."
-                            sleep 2
-                          done
-
-                          # Step 4: Create admin user
-                          echo "Step 4: Creating admin user"
-                          mongosh --eval 'use admin; db.createUser({user: "root", pwd: "example", roles: [{role: "root", db: "admin"}]})'
-
-                          # Step 5: Verify user creation
-                          echo "Step 5: Verifying user creation"
-                          if mongosh --quiet --eval 'db.auth("root", "example")' admin | grep -q "1"; then
-                            echo "User verified successfully"
-                          else
-                            echo "WARNING: User verification failed"
-                          fi
-
-                          # Step 6: Create a test database and collection
-                          echo "Step 6: Creating test database and collection"
-                          mongosh --eval 'use lookupdb; db.test.insertOne({test: true})'
-
-                          # Wait a moment
-                          sleep 5
-
-                          echo "MongoDB initialized successfully with auth user"
-                          echo "To test: mongosh -u root -p example --authenticationDatabase admin"
-
-                          # Keep container running
-                          wait $MONGO_PID
-
+                  command:
+                      - mongod
+                      - "--bind_ip_all"
+                      - "--replSet"
+                      - rs0
+                  env:
+                      - name: MONGO_INITDB_ROOT_USERNAME
+                        value: "root"
+                      - name: MONGO_INITDB_ROOT_PASSWORD
+                        value: "example"
                 # ZOOKEEPER
                 - name: zookeeper
                   image: bitnami/zookeeper:latest
@@ -147,8 +102,6 @@ spec:
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.name
-                      - name: MONGO_URL
-                        value: "mongodb://root:example@localhost:27017/admin?authSource=admin&directConnection=true"
 
                 - name: kafka-service-lookup
                   image: matiaspaavilainen/distributed-systems:kafka_services
