@@ -43,29 +43,37 @@ spec:
                           echo "Starting MongoDB as single-node replica set..."
                           mkdir -p /data/db
 
-                          # Capture hostname in a bash variable
-                          HOST_NAME=$(hostname)
-                          echo "Current hostname: $HOST_NAME"
-
-                          # Start MongoDB
-                          mongod --replSet rs-$HOST_NAME --bind_ip_all --logpath /tmp/mongo.log --logappend &
+                          # Start MongoDB without auth first
+                          mongod --replSet rs-$(hostname) --bind_ip_all --logpath /tmp/mongo.log --logappend &
                           MONGO_PID=$!
 
                           sleep 10
 
-                          # Initialize replica set - properly passing hostname to mongosh
+                          # Initialize replica set
                           echo "Initializing replica set..."
-                          mongosh --eval "const hostName = '$HOST_NAME'; rs.initiate({
+                          mongosh --eval "const hostName = '$(hostname)'; rs.initiate({
                             _id: 'rs-' + hostName,
                             members: [
                               {_id: 0, host: 'localhost:27017'}
                             ]
                           })"
 
+                          # Wait for primary to be elected
+                          echo "Waiting for primary to be elected..."
+                          for i in {1..30}; do
+                            IS_PRIMARY=$(mongosh --quiet --eval "db.isMaster().ismaster")
+                            if [ "$IS_PRIMARY" = "true" ]; then
+                              echo "Primary elected!"
+                              break
+                            fi
+                            echo "Waiting for primary election (attempt $i/30)..."
+                            sleep 2
+                          done
+
                           # Create the admin user
                           echo "Creating admin user..."
                           mongosh --eval 'use admin; db.createUser({user: "root", pwd: "example", roles: [{role: "root", db: "admin"}]})'
-
+                          echo "Admin user created successfully"
                           # Check if primary - wait until status is available
                           echo "Checking replica set status..."
                           MAX_ATTEMPTS=10
@@ -147,6 +155,8 @@ spec:
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.name
+                      - name: MONGO_URL
+                        value: "mongodb://root:example@localhost:27017/admin?authSource=admin&directConnection=true"
 
                 - name: kafka-service-lookup
                   image: matiaspaavilainen/distributed-systems:kafka_services
