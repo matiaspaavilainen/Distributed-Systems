@@ -32,8 +32,8 @@ spec:
             - default
     selector:
         matchLabels:
-            app: server-metrics-service
+            app: control
     endpoints:
-        - port: metrics
+        - targetPort: 40003
           interval: 15s
           path: /metrics
