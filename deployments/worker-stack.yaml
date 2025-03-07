@@ -34,7 +34,7 @@ spec:
             containers:
                 # MONGODB
                 - name: mongodb
-                  image: mongo:latest
+                  image: mongodb/mongodb-community-server:latest
                   ports:
                       - containerPort: 27017
                   command: ["/bin/bash", "-c"]
@@ -43,37 +43,34 @@ spec:
                           echo "Starting MongoDB as single-node replica set..."
                           mkdir -p /data/db
 
-                          # Start MongoDB with more logging
+                          # Start MongoDB
                           mongod --replSet rs-$(hostname) --bind_ip_all --logpath /tmp/mongo.log --logappend &
                           MONGO_PID=$!
 
-                          # Wait longer for MongoDB to start
-                          echo "Waiting for MongoDB to start..."
                           sleep 10
 
-                          # Initialize replica set
+                          # Initialize replica set (mongosh is already included)
                           echo "Initializing replica set..."
-                          mongo --eval 'rs.initiate({
+                          mongosh --eval 'rs.initiate({
                             _id: "rs-" + hostname,
                             members: [
                               {_id: 0, host: "localhost:27017"}
                             ]
                           })'
-
-                          # Create the admin user
-                          echo "Creating admin user..."
-                          mongo --eval 'use admin; db.createUser({user: "root", pwd: "example", roles: [{role: "root", db: "admin"}]})'
-
-                          # Check if primary
-                          echo "Checking replica set status..."
-                          mongo --eval 'rs.status()'
-
-                          # No need to restart MongoDB - just keep the current instance running
-                          echo "MongoDB initialized as single-node replica set rs-$(hostname) with authentication"
-
-                          # Keep container running and forward logs
-                          tail -f /tmp/mongo.log &
-                          wait $MONGO_PID
+                            
+                            # Create the admin user
+                            echo "Creating admin user..."
+                            mongosh --eval 'use admin; db.createUser({user: "root", pwd: "example", roles: [{role: "root", db: "admin"}]})'
+                            
+                            # Check if primary
+                            echo "Checking replica set status..."
+                            mongosh --eval 'rs.status()'
+                            
+                            echo "MongoDB initialized as single-node replica set rs-$(hostname) with authentication"
+                            
+                            # Keep container running and forward logs
+                            tail -f /tmp/mongo.log &
+                            wait $MONGO_PID
                   env:
                       - name: MONGO_INITDB_ROOT_USERNAME
                         value: "root"
