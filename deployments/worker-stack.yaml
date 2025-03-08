@@ -97,7 +97,7 @@ spec:
                         valueFrom:
                             fieldRef:
                                 fieldPath: metadata.name
-                      - name: MAX_VALUE_PER_ADDRESS
+                      - name: MAX_VALUES_PER_ADDRESS
                         value: "256"
                       - name: MONGO_URL
                         value: "mongodb://root:example@localhost:27017"
