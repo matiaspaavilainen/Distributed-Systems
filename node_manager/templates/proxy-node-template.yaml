@@ -24,21 +24,11 @@ spec:
                                   app: worker
                                   statefulset.kubernetes.io/pod-name: worker-{worker_num}
                           topologyKey: kubernetes.io/hostname
+            terminationGracePeriodSeconds: 30
             containers:
-                # MONGODB
-                - name: mongodb
-                  image: mongo:latest
-                  ports:
-                      - containerPort: 27017
-                  env:
-                      - name: MONGO_INITDB_ROOT_USERNAME
-                        value: "root"
-                      - name: MONGO_INITDB_ROOT_PASSWORD
-                        value: "example"
-
                 - name: kafka-services
                   image: matiaspaavilainen/distributed-systems:kafka_services
-                  imagePullPolicy: Always
+                  #imagePullPolicy: Always
                   env:
                       - name: PYTHONPATH
                         value: "/app:/app/consumer:/app/producer"
@@ -48,9 +38,47 @@ spec:
 
                       - name: POD_IP
                         value: "{pod_ip}"
+
                 - name: proxy-node
                   image: matiaspaavilainen/distributed-systems:proxy_node
-                  imagePullPolicy: Always # REMOVE WHEN NO NEED TO CHANGE CODE
+                  #imagePullPolicy: Always # REMOVE WHEN NO NEED TO CHANGE CODE
+                  startupProbe:
+                      httpGet:
+                          path: /health
+                          port: "{http_port}"
+                      failureThreshold: 30
+                      periodSeconds: 10
+
+                  readinessProbe:
+                      httpGet:
+                          path: /health
+                          port: "{http_port}"
+                      initialDelaySeconds: 20
+                      periodSeconds: 5
+                      failureThreshold: 5
+                      successThreshold: 2
+
+                  livenessProbe:
+                      httpGet:
+                          path: /health
+                          port: "{http_port}"
+                      initialDelaySeconds: 60
+                      periodSeconds: 15
+                      failureThreshold: 3
+
+                  resources:
+                      requests:
+                          cpu: 200m
+                          memory: 256Mi
+                      limits:
+                          cpu: 500m
+                          memory: 512Mi
+
+                  lifecycle:
+                      preStop:
+                          exec:
+                              command: ["/bin/sh", "-c", "sleep 5"]
+
                   ports:
                       - name: http
                         containerPort: "{http_port}"

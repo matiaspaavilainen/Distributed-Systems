@@ -17,11 +17,6 @@ try:
     s1.close()
     print('Connected to worker-1')
     
-    print('Connecting to worker-2...')
-    s2 = socket.create_connection(('worker-2', 50051), timeout=2)
-    s2.close()
-    print('Connected to worker-2')
-    
     print('All connections successful')
     exit(0)
 except Exception as e:

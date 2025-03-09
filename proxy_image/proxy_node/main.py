@@ -26,10 +26,12 @@ POD_NAME = os.getenv("POD_NAME")
 MAIN_SERVER_ADDRESS = "server-service.default.svc.cluster.local:40002"
 
 LOOKUP_SERVICE = f"worker-{POD_NAME.split("-")[2]}:50051"
-MONGO_URL = "mongodb://root:example@localhost:27017"
+
+mongo_service = f"worker-{POD_NAME.split("-")[2]}"
+MONGO_URL = f"mongodb://root:example@{mongo_service}:27017"
 
 # max number of users in a node's db
-MAX_DB_DOCUMENTS = 1000
+MAX_DB_DOCUMENTS = 1024
 
 # Topics
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
@@ -48,6 +50,12 @@ async def get_resource(query: str):
         )
     else:
         raise HTTPException(status_code=404, detail="Item not found")
+
+
+# health check
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 def search_local_db(query):
@@ -240,17 +248,15 @@ def main(port):
     grpc_thread.start()
     print("Started gRPC server thread")
 
-    http_thread = threading.Thread(target=start_http_server, args=(HTTP_PORT,))
-    http_thread.start()
-    print("Started HTTP server thread")
-
     send_message(
         NODE_UPDATES,
         {"data": [get_own_lookup_entry()], "type": "I"},
         KAFKA_PROD_PORT,
     )
 
-    print("Lookuptable: ", get_lookup_table())
+    http_thread = threading.Thread(target=start_http_server, args=(HTTP_PORT,))
+    http_thread.start()
+    print("Started HTTP server thread")
 
     try:
         while True:

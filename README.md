@@ -4,7 +4,7 @@
 
 ### Prerequisites
 
-4x Ubuntu 22.04 VM with 2xCPU, 2gb RAM, 10gb storage
+3x Ubuntu 22.04 io.70gb
 
 ### Only do these 2 for the control VM
 
@@ -153,10 +153,15 @@ stern --version
 
     ```bash
     # Label worker nodes (replace <worker-X-name> with actual node names)
-    # assuming worker ndoes were started with names worker-1, worker-2, worker-3
+    # assuming worker ndoes were started with names worker-1, worker-2
     kubectl label node worker-1 node-role.kubernetes.io/worker=true
     kubectl label node worker-2 node-role.kubernetes.io/worker=true
-    kubectl label node worker-3 node-role.kubernetes.io/worker=true
+
+    # Get control plane node name
+    CONTROL_NODE=$(kubectl get nodes -l node-role.kubernetes.io/control-plane -o jsonpath='{.items[0].metadata.name}')
+
+    # Add label to control plane to force prometheus there
+    kubectl label node $CONTROL_NODE monitoring-target=control
 
     # Verify labels
 
@@ -263,7 +268,7 @@ stern --version
     helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
     helm repo update
 
-    # Install Prometheus with minimal configuration and emptyDir (no persistent storage)
+    # Install Prometheus with proper node selector
     helm install prometheus prometheus-community/kube-prometheus-stack \
       --namespace monitoring \
       --set prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues=false \
@@ -275,7 +280,11 @@ stern --version
       --set prometheus.prometheusSpec.storageSpec.emptyDir.sizeLimit=2Gi \
       --set prometheusOperator.resources.requests.memory=100Mi \
       --set prometheusOperator.resources.limits.memory=200Mi \
-      --set alertmanager.enabled=false
+      --set alertmanager.enabled=false \
+      --set prometheus.prometheusSpec.nodeSelector.monitoring-target=control \
+      --set prometheusOperator.nodeSelector.monitoring-target=control \
+      --set kube-state-metrics.nodeSelector.monitoring-target=control \
+      --set prometheus-node-exporter.nodeSelector.monitoring-target=control
 
     # Wait for Prometheus to be ready
     echo "Waiting for Prometheus components to start..."
@@ -300,7 +309,8 @@ stern --version
       --set service.nodePort=30300 \
       --set persistence.enabled=false \
       --set resources.requests.memory=100Mi \
-      --set resources.limits.memory=200Mi
+      --set resources.limits.memory=200Mi \
+      --set nodeSelector.monitoring-target=control
     
     # Get admin password
     kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo

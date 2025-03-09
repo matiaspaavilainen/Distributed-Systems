@@ -19,22 +19,20 @@ from grpc_sharing.grpc_sharing import (
 
 # Constants
 WORKER_NAME = os.getenv("WORKER_NAME")
+# how many values each node's entry can hold in the table
+MAX_VALUES_PER_ADDRESS = int(os.getenv("MAX_VALUES_PER_ADDRESS"))
+MONGO_URL = os.getenv("MONGO_URL")
 kafka_port = int(os.getenv("KAFKA_SERVICE_PORT"))
+
 CONSUMER_PORT = kafka_port + 2
 PRODUCER_PORT = kafka_port + 3
 
 NODE_UPDATES_TOPIC = "node-updates"
 LOOKUP_UPDATES_TOPIC = "lookup-updates"
 
-# how many values each entry in the table holds
-# CHANGE in proxy-node/messaging as well
-MAX_VALUES_PER_ADDRESS = 64
-MONGO_URL = os.getenv("MONGO_URL")
 PEER_LOOKUPS = [
-    "lookup-service-control:50051",
     "worker-0:50051",
     "worker-1:50051",
-    "worker-2:50051",
 ]
 
 GRPC_SERVER_PORT = 50051

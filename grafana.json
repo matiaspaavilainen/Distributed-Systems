@@ -24,7 +24,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "cef5207388uf4e"
+				"uid": "aef8nxlmsxybkc"
 			},
 			"fieldConfig": {
 				"defaults": {
@@ -119,7 +119,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "cef5207388uf4e"
+				"uid": "aef8nxlmsxybkc"
 			},
 			"fieldConfig": {
 				"defaults": {
@@ -217,7 +217,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "cef5207388uf4e"
+				"uid": "aef8nxlmsxybkc"
 			},
 			"fieldConfig": {
 				"defaults": {
@@ -311,7 +311,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "cef5207388uf4e"
+				"uid": "aef8nxlmsxybkc"
 			},
 			"fieldConfig": {
 				"defaults": {
@@ -391,6 +391,6 @@
 	"timezone": "browser",
 	"title": "Basic",
 	"uid": "fef5228pi0hs0d",
-	"version": 25,
+	"version": 3,
 	"weekStart": ""
 }

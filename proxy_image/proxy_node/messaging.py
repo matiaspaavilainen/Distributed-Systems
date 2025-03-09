@@ -11,7 +11,7 @@ lookup_table = {}
 lookup_table_lock = threading.Lock()
 
 # CHANGE in lookupservice as well
-MAX_VALUES_PER_ADDRESS = 64
+MAX_VALUES_PER_ADDRESS = 256
 
 DEBUG = True
 
