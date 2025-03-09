@@ -6,7 +6,7 @@ metadata:
         app: worker
 spec:
     serviceName: worker
-    replicas: 3
+    replicas: 2
     selector:
         matchLabels:
             app: worker
@@ -163,29 +163,6 @@ spec:
     selector:
         app: worker
         statefulset.kubernetes.io/pod-name: worker-1
-    ports:
-        - name: kafka
-          protocol: TCP
-          port: 9092
-          targetPort: 9092
-        - name: mongodb
-          protocol: TCP
-          port: 27017
-          targetPort: 27017
-        - name: lookup
-          protocol: TCP
-          port: 50051
-          targetPort: 50051
-    type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-    name: worker-2
-spec:
-    selector:
-        app: worker
-        statefulset.kubernetes.io/pod-name: worker-2
     ports:
         - name: kafka
           protocol: TCP
