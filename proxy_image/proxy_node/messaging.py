@@ -12,7 +12,7 @@ lookup_table = {}
 lookup_table_lock = threading.Lock()
 
 # CHANGE in lookupservice as well
-MAX_VALUES_PER_ADDRESS = os.getenv("MAX_VALUES_PER_ADDRESS")
+MAX_VALUES_PER_ADDRESS = int(os.getenv("MAX_VALUES_PER_ADDRESS"))
 
 DEBUG = True
 
