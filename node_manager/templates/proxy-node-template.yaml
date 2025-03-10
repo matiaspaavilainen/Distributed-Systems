@@ -28,7 +28,7 @@ spec:
             containers:
                 - name: kafka-services
                   image: matiaspaavilainen/distributed-systems:kafka_services
-                  #imagePullPolicy: Always
+                  imagePullPolicy: Always
                   env:
                       - name: PYTHONPATH
                         value: "/app:/app/consumer:/app/producer"
@@ -41,7 +41,7 @@ spec:
 
                 - name: proxy-node
                   image: matiaspaavilainen/distributed-systems:proxy_node
-                  #imagePullPolicy: Always # REMOVE WHEN NO NEED TO CHANGE CODE
+                  imagePullPolicy: Always # REMOVE WHEN NO NEED TO CHANGE CODE
                   startupProbe:
                       httpGet:
                           path: /health
