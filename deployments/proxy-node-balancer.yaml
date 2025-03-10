@@ -48,6 +48,13 @@ spec:
                             name: proxy-node-service
                             port:
                                 name: http
+                  - path: /status
+                    pathType: Prefix
+                    backend:
+                        service:
+                            name: chatgpt-dashboard
+                            port:
+                                name: http
 ---
 apiVersion: v1
 kind: Service

@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: chatgpt-dashboard
+    labels:
+        app: chatgpt-dashboard
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: chatgpt-dashboard
+    template:
+        metadata:
+            labels:
+                app: chatgpt-dashboard
+        spec:
+            # Run on control plane like your control stack
+            tolerations:
+                - key: "node-role.kubernetes.io/control-plane"
+                  operator: "Exists"
+                  effect: "NoSchedule"
+                - key: "node-role.kubernetes.io/master"
+                  operator: "Exists"
+                  effect: "NoSchedule"
+            affinity:
+                nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                        nodeSelectorTerms:
+                            - matchExpressions:
+                                  - key: node-role.kubernetes.io/control-plane
+                                    operator: Exists
+            containers:
+                - name: chatgpt-dashboard
+                  image: matiaspaavilainen/distributed-systems:chatgpt-dashboard
+                  ports:
+                      - name: http
+                        containerPort: 8000
+                  env:
+                      - name: OPENAI_API_KEY
+                        valueFrom:
+                            secretKeyRef:
+                                name: openai-api-key
+                                key: api-key
+                  resources:
+                      requests:
+                          memory: "128Mi"
+                          cpu: "100m"
+                      limits:
+                          memory: "256Mi"
+                          cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: chatgpt-dashboard
+    annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
+spec:
+    selector:
+        app: chatgpt-dashboard
+    ports:
+        - name: http
+          port: 80
+          targetPort: http
