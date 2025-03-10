@@ -175,6 +175,9 @@ stern --version
 1. **Deploy control stack**
 
     ```bash
+    # generate secret for api key
+    kubectl create secret generic openai-api-key --from-literal=api-key=your_openai_api_key_here
+
     # Apply ingress-nginx controller
     kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
 
