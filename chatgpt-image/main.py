@@ -115,9 +115,9 @@ def generate_status_overview(metrics):
     return response.choices[0].message.content
 
 
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
-    """Root endpoint serving HTML overview"""
+@app.get("/status", response_class=HTMLResponse)
+async def status_page(request: Request):
+    """Status endpoint serving HTML overview"""
     try:
         metrics = await fetch_prometheus_metrics()
         overview_html = generate_status_overview(metrics)
