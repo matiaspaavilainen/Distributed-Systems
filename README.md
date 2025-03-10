@@ -1,5 +1,7 @@
 # Distributed-Systems
 
+![system-diagram-Page-1 drawio](https://github.com/user-attachments/assets/351a8bec-6cae-4dcb-bdfa-92e4deaa2c19)
+
 ## KUBEADM
 
 ### Prerequisites
