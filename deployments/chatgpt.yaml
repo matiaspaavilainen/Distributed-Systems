@@ -32,6 +32,7 @@ spec:
             containers:
                 - name: chatgpt-dashboard
                   image: matiaspaavilainen/distributed-systems:chatgpt-dashboard
+                  imagePullPolicy: Always
                   ports:
                       - name: http
                         containerPort: 8000
