@@ -41,6 +41,8 @@ spec:
                             secretKeyRef:
                                 name: openai-api-key
                                 key: api-key
+                      - name: PYTHONPATH
+                        value: "/app"
                   resources:
                       requests:
                           memory: "128Mi"
