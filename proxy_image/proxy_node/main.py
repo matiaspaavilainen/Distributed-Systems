@@ -255,6 +255,10 @@ def main(port):
     )
 
     http_thread = threading.Thread(target=start_http_server, args=(HTTP_PORT,))
+
+    # Wait to try and avoid the loadbalancer from sending requests too early.
+    time.sleep(5)
+
     http_thread.start()
     print("Started HTTP server thread")
 

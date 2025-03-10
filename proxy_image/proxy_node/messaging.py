@@ -1,3 +1,4 @@
+import os
 import grpc
 import json
 import threading
@@ -11,7 +12,7 @@ lookup_table = {}
 lookup_table_lock = threading.Lock()
 
 # CHANGE in lookupservice as well
-MAX_VALUES_PER_ADDRESS = 256
+MAX_VALUES_PER_ADDRESS = os.getenv("MAX_VALUES_PER_ADDRESS")
 
 DEBUG = True
 

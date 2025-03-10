@@ -96,6 +96,9 @@ spec:
                       - name: PORT
                         value: "{base_port}"
 
+                      - name: MAX_VALUES_PER_ADDRESS
+                        value: "512"
+
                       - name: PYTHONPATH
                         value: "/app:/app/kafka_messaging/consumer:/app/kafka_messaging/producer:/app/grpc_server:/app/grpc_sharing/"
 ---
