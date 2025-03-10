@@ -17,12 +17,8 @@ class LookupServicer(lookup_sharing_pb2_grpc.LookupSharingServicer):
 
     def ReceivePeerUpdate(self, request, context):
         try:
-            start_time = time.time()
             data = json.loads(request.data)
             remote_vector_clock = json.loads(request.vector_clock)
-            print(
-                f"Received peer update: type={request.type}, data length={len(str(data))}"
-            )
 
             # Update local vector clock using the remote one
             for node_id, remote_clock in remote_vector_clock.items():
@@ -34,10 +30,6 @@ class LookupServicer(lookup_sharing_pb2_grpc.LookupSharingServicer):
             # Process update
             self.update_table(data, request.type, from_peer=True)
 
-            # Log processing time
-            elapsed = time.time() - start_time
-            print(f"Processed peer update in {elapsed:.4f} seconds")
-
             return lookup_sharing_pb2.UpdateResponse(success=True)
         except Exception as e:
             print(f"Error in ReceivePeerUpdate: {e}")
@@ -47,20 +39,12 @@ class LookupServicer(lookup_sharing_pb2_grpc.LookupSharingServicer):
 
     def GetLookupTable(self, request, context):
         try:
-            start_time = time.time()
-            print(f"Received lookup table request from {context.peer()}")
-
             # Retrieve data from MongoDB
             table_data = {
                 str(doc["address"]): doc["values"] for doc in self.collection.find()
             }
-
             # Convert to JSON string
             serialized_data = json.dumps(table_data)
-
-            elapsed = time.time() - start_time
-            print(f"Processed lookup table request in {elapsed:.4f} seconds")
-            print(f"Returning lookup table with {len(table_data)} entries")
 
             return lookup_sharing_pb2.LookupTableResponse(
                 table_data=serialized_data, success=True
@@ -115,12 +99,7 @@ def broadcast_to_peers(data, update_type, vector_clock, peer_lookups):
                     type=update_type,
                     vector_clock=json.dumps(vector_clock.clocks),
                 )
-
-                print(
-                    f"Sending update to {peer} (attempt {attempt+1}/{len(timeouts)}, timeout={timeout}s)"
-                )
                 stub.ReceivePeerUpdate(request, timeout=timeout)
-                print(f"✓ Successfully sent update to {peer}")
                 return  # Success
             except grpc.RpcError as e:
                 status_code = e.code()
@@ -129,8 +108,6 @@ def broadcast_to_peers(data, update_type, vector_clock, peer_lookups):
             except Exception as e:
                 print(f"Error sending to {peer}: {str(e)[:100]}")
                 time.sleep(2)
-
-        print(f"⚠ Failed to reach {peer} after {len(timeouts)} attempts")
 
     # Use thread pool with a reasonable concurrency limit
     with ThreadPoolExecutor(max_workers=min(3, len(peer_lookups))) as executor:

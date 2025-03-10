@@ -20,7 +20,7 @@ from messaging import (
 import grpc_client_SAND
 import grpc_server_SAND
 
-DEBUG = True
+DEBUG = False
 SERVICE_NAME = os.getenv("SERVICE_NAME")
 POD_NAME = os.getenv("POD_NAME")
 MAIN_SERVER_ADDRESS = "server-service.default.svc.cluster.local:40002"
@@ -107,11 +107,9 @@ def process_item_response(item, query):
         if oldest:
             oldest_ids = [doc["_id"] for doc in oldest]
             collection.delete_many({"_id": {"$in": oldest_ids}})
-            print(f"Removed {len(oldest_ids)} oldest documents to maintain size limit")
 
     # Insert into MongoDB (will create its own _id)
     collection.insert_one(user_data.copy())
-    print("Added " + str(user_data.get("name")) + " to the local database")
     update_lookup_table(
         {get_own_lookup_entry(): [query]},
         message_type="A",

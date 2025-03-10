@@ -66,7 +66,7 @@ async def fetch_prometheus_metrics():
                 metrics["active_nodes"] = 0
 
         # Latency (95th percentile)
-        latency_query = "histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket[1m])) by (le))"
+        latency_query = "histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket[5m])) by (le))"
         response = await client.get(
             f"{PROMETHEUS_URL}/api/v1/query", params={"query": latency_query}
         )
@@ -92,6 +92,13 @@ def generate_status_overview(metrics):
 
     system_prompt = """
     You are a system monitoring expert. Generate a concise HTML summary of the system status based on the metrics provided.
+
+    System context:
+    - This is a Kubernetes cluster with 10GB RAM worker nodes
+    - CPU values represent actual CPU time used (not percentage)
+    - Worker nodes have 4 cores total shared between all proxy nodes
+    - CPU usage > 3 cores (75%) should be considered high utilization
+
     Include:
     1. An overall health assessment (Good, Warning, Critical)
     2. Key observations about the metrics
@@ -170,6 +177,35 @@ async def status_page(request: Request):
         </html>
         """
         )
+
+
+@app.get("/metrics-debug")
+async def metrics_debug():
+    """Debug endpoint to list available metrics"""
+    async with httpx.AsyncClient() as client:
+        # Get list of metrics
+        response = await client.get(f"{PROMETHEUS_URL}/api/v1/label/__name__/values")
+        metrics_list = response.json()["data"] if response.status_code == 200 else []
+
+        # Get latency metric details
+        latency_response = await client.get(
+            f"{PROMETHEUS_URL}/api/v1/query",
+            params={
+                "query": "nginx_ingress_controller_request_duration_seconds_bucket"
+            },
+        )
+
+        return {
+            "metrics_count": len(metrics_list),
+            "metrics_sample": (
+                metrics_list[:20] if len(metrics_list) > 20 else metrics_list
+            ),
+            "ingress_metrics": [m for m in metrics_list if "nginx" in m],
+            "latency_data_available": bool(
+                latency_response.json().get("data", {}).get("result", [])
+            ),
+            "latency_sample": latency_response.json(),
+        }
 
 
 if __name__ == "__main__":

@@ -341,7 +341,7 @@ def scale_based_on_metrics(
 
 def main():
     MIN_NODES = 2
-    MAX_NODES = 10
+    MAX_NODES = 18
     DEFAULT_NODE_QUANTITY = 2
     current_nodes = DEFAULT_NODE_QUANTITY
     template_path = "templates/proxy-node-template.yaml"

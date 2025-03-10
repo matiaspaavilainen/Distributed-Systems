@@ -14,7 +14,7 @@ lookup_table_lock = threading.Lock()
 # CHANGE in lookupservice as well
 MAX_VALUES_PER_ADDRESS = int(os.getenv("MAX_VALUES_PER_ADDRESS"))
 
-DEBUG = True
+DEBUG = False
 
 
 def init_lookup_table(LOOKUP_SERVICE):
